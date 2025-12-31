@@ -1,0 +1,340 @@
+import numpy as np
+import time
+import inspect
+from ..model.arrays import ArrayDesign
+from ..model.sources import FarField1DSourcePlacement
+from ..model.signals import ComplexStochasticSignal
+from .crb import crb_det_farfield_1d, crb_sto_farfield_1d, crb_stouc_farfield_1d
+from .mse import ecov_music_1d
+
+
+class PerformanceResult:
+    """封装性能评估结果的类。
+    
+    Attributes:
+        snr (float): 信噪比（dB）。
+        n_snapshots (int): 快照数。
+        n_monte_carlo (int): 蒙特卡洛模拟次数。
+        crb_values (dict): 不同类型CRB的值，键为CRB类型，值为CRB值。
+        estimator_results (dict): 不同估计器的结果，键为估计器名称，
+            值为包含不同指标的字典，键为指标名称，值为指标值。
+        computation_time (float): 总计算时间（秒）。
+    """
+    
+    def __init__(self, snr, n_snapshots, n_monte_carlo):
+        self.snr = snr
+        self.n_snapshots = n_snapshots
+        self.n_monte_carlo = n_monte_carlo
+        self.crb_values = {}
+        self.estimator_results = {}
+        self.computation_time = 0.0
+    
+    def add_crb(self, crb_type, value):
+        """添加CRB值。
+        
+        Args:
+            crb_type (str): CRB类型。
+            value (float): CRB值。
+        """
+        self.crb_values[crb_type] = value
+    
+    def add_estimator_result(self, estimator_name, metric_results):
+        """添加估计器结果。
+        
+        Args:
+            estimator_name (str): 估计器名称。
+            metric_results (dict): 指标结果，键为指标名称，值为指标值。
+        """
+        self.estimator_results[estimator_name] = metric_results
+    
+    def __str__(self):
+        """返回结果的字符串表示。"""
+        s = f"Performance Result (SNR: {self.snr} dB, Snapshots: {self.n_snapshots}, Monte Carlo: {self.n_monte_carlo})\n"
+        s += "=" * 70 + "\n"
+        
+        # 打印CRB值
+        s += "CRB Values:\n"
+        for crb_type, value in self.crb_values.items():
+            s += f"  {crb_type.upper():<15}: {value:12.6e} rad²\n"
+        s += "\n"
+        
+        # 打印估计器结果
+        s += "Estimator Results:\n"
+        for estimator_name, metric_results in self.estimator_results.items():
+            s += f"  {estimator_name}:\n"
+            for metric, value in metric_results.items():
+                unit = "rad²" if metric == "mse" else "rad"
+                s += f"    {metric.upper():<10}: {value:12.6e} {unit}\n"
+        s += "\n"
+        
+        # 打印计算时间
+        s += f"Total Computation Time: {self.computation_time:.3f} seconds\n"
+        
+        return s
+    
+    def __repr__(self):
+        """返回结果的repr表示。"""
+        return self.__str__()
+
+
+class DOAPerformanceEvaluator:
+    """DOA性能评估器，用于评估不同条件下DOA估计算法的性能。
+    
+    该评估器接受用户指定的参数，执行蒙特卡洛模拟，计算评估指标（MSE、RMSE）
+    和理论性能下界（CRLB），并返回结果和计算时间。
+    """
+    
+    def __init__(self, array, sources, snr, n_snapshots, n_monte_carlo,
+                 estimators, crb_types=None, metrics=None):
+        """初始化性能评估器。
+        
+        Args:
+            array (~doatools.model.arrays.ArrayDesign): 阵列设计。
+            sources (~doatools.model.sources.FarField1DSourcePlacement): 信源位置。
+            snr (float): 信噪比（dB）。
+            n_snapshots (int): 快照数。
+            n_monte_carlo (int): 蒙特卡洛模拟次数。
+            estimators (dict or list or object): DOA估计算法实例或实例列表或字典。
+                如果是字典，键为估计器名称，值为估计器实例；
+                如果是列表，使用估计器类名作为名称；
+                如果是单个实例，使用其类名作为名称。
+            crb_types (list or str, optional): CRLB类型列表或单个类型，
+                可选值：'sto'（随机CRB）、'det'（确定性CRB）、'stouc'（随机无相关CRB）。
+                默认值为['sto']。
+            metrics (list or str, optional): 评估指标列表或单个指标，
+                可选值：'mse'（均方误差）、'rmse'（均方根误差）。
+                默认值为['mse']。
+        """
+        self.array = array
+        self.sources = sources
+        self.snr = snr
+        self.n_snapshots = n_snapshots
+        self.n_monte_carlo = n_monte_carlo
+        
+        # 处理estimators参数
+        self.estimators = self._process_estimators(estimators)
+        
+        # 处理crb_types参数
+        if crb_types is None:
+            crb_types = ['sto']
+        elif isinstance(crb_types, str):
+            crb_types = [crb_types]
+        self.crb_types = crb_types
+        
+        # 处理metrics参数
+        if metrics is None:
+            metrics = ['mse']
+        elif isinstance(metrics, str):
+            metrics = [metrics]
+        self.metrics = metrics
+        
+        # 验证输入参数
+        self._validate_inputs()
+        
+        # 预计算一些参数
+        self._precompute_parameters()
+    
+    def _process_estimators(self, estimators):
+        """处理estimators参数，转换为字典格式。
+        
+        Args:
+            estimators (dict or list or object): 估计器实例或实例列表或字典。
+        
+        Returns:
+            dict: 估计器字典，键为估计器名称，值为估计器实例。
+        """
+        if isinstance(estimators, dict):
+            return estimators
+        elif isinstance(estimators, list):
+            return {estimator.__class__.__name__: estimator for estimator in estimators}
+        else:
+            return {estimators.__class__.__name__: estimators}
+    
+    def _validate_inputs(self):
+        """验证输入参数的有效性。"""
+        if not isinstance(self.array, ArrayDesign):
+            raise ValueError('array must be an instance of ArrayDesign')
+        
+        if not isinstance(self.sources, FarField1DSourcePlacement):
+            raise ValueError('sources must be an instance of FarField1DSourcePlacement')
+        
+        # 验证每个估计器
+        for name, estimator in self.estimators.items():
+            # 检查estimator是否具有estimate方法
+            if not hasattr(estimator, 'estimate') or not callable(estimator.estimate):
+                raise ValueError(f'estimator {name} must have a callable estimate method')
+            
+            # 检查estimator是否具有wavelength属性
+            if not hasattr(estimator, '_wavelength'):
+                raise ValueError(f'estimator {name} must have a _wavelength attribute')
+        
+        # 验证CRB类型
+        valid_crb_types = ['sto', 'det', 'stouc']
+        for crb_type in self.crb_types:
+            if crb_type not in valid_crb_types:
+                raise ValueError(f'crb_type {crb_type} must be one of: {valid_crb_types}')
+        
+        # 验证指标
+        valid_metrics = ['mse', 'rmse']
+        for metric in self.metrics:
+            if metric not in valid_metrics:
+                raise ValueError(f'metric {metric} must be one of: {valid_metrics}')
+        
+        if self.n_monte_carlo <= 0:
+            raise ValueError('n_monte_carlo must be positive')
+        
+        if self.n_snapshots <= 0:
+            raise ValueError('n_snapshots must be positive')
+    
+    def _precompute_parameters(self):
+        """预计算一些参数。"""
+        # 计算噪声功率
+        self.power_source = 1.0  # 归一化源功率
+        self.power_noise = self.power_source / (10**(self.snr / 10))
+        
+        # 初始化信号源和噪声
+        self.source_signal = ComplexStochasticSignal(self.sources.size, self.power_source)
+        self.noise_signal = ComplexStochasticSignal(self.array.size, self.power_noise)
+    
+    def _compute_crb(self, crb_type, wavelength):
+        """计算理论性能下界（CRLB）。
+        
+        Args:
+            crb_type (str): CRB类型。
+            wavelength (float): 波长。
+        
+        Returns:
+            float: CRB值。
+        """
+        if crb_type == 'sto':
+            crb = crb_sto_farfield_1d(self.array, self.sources, wavelength,
+                                      self.power_source, self.power_noise, self.n_snapshots,
+                                      return_mode='mean_diag')
+        elif crb_type == 'det':
+            # 对于确定性CRB，我们需要源协方差矩阵
+            # 使用单位矩阵作为近似
+            Rs = np.eye(self.sources.size) * self.power_source
+            crb = crb_det_farfield_1d(self.array, self.sources, wavelength,
+                                      Rs, self.power_noise, self.n_snapshots,
+                                      return_mode='mean_diag')
+        elif crb_type == 'stouc':
+            crb = crb_stouc_farfield_1d(self.array, self.sources, wavelength,
+                                       self.power_source, self.power_noise, self.n_snapshots,
+                                       return_mode='mean_diag')
+        return crb
+    
+    def evaluate(self):
+        """执行性能评估。
+        
+        Returns:
+            PerformanceResult: 评估结果对象。
+        """
+        start_time = time.time()
+        
+        # 创建结果对象
+        result = PerformanceResult(
+            snr=self.snr,
+            n_snapshots=self.n_snapshots,
+            n_monte_carlo=self.n_monte_carlo
+        )
+        
+        # 计算所有CRB值
+        # 注意：CRB计算只需要进行一次，与估计器无关
+        # 使用第一个估计器的波长作为参考
+        reference_wavelength = next(iter(self.estimators.values()))._wavelength
+        for crb_type in self.crb_types:
+            crb_value = self._compute_crb(crb_type, reference_wavelength)
+            result.add_crb(crb_type, crb_value)
+        
+        # 对每个估计器执行蒙特卡洛模拟
+        for estimator_name, estimator in self.estimators.items():
+            # 初始化指标结果字典
+            metric_results = {}
+            
+            # 执行蒙特卡洛模拟，计算MSE
+            total_mse = 0.0
+            for _ in range(self.n_monte_carlo):
+                # 生成信号和噪声
+                S = self.source_signal.emit(self.n_snapshots)
+                N = self.noise_signal.emit(self.n_snapshots)
+                
+                # 生成阵列输出
+                A = self.array.steering_matrix(self.sources, estimator._wavelength)
+                Y = A @ S + N
+                
+                # 计算协方差矩阵
+                Ry = (Y @ Y.conj().T) / self.n_snapshots
+                
+                # 执行DOA估计
+                # 检查estimate方法的签名，决定是否传递d0参数
+                sig = inspect.signature(estimator.estimate)
+                params = list(sig.parameters.keys())
+                if len(params) >= 4 or 'd0' in params:
+                    # 方法接受d0参数，如RootMUSIC1D
+                    resolved, estimates = estimator.estimate(Ry, self.sources.size, self.array.d0[0])
+                else:
+                    # 方法不接受d0参数，如MUSIC
+                    resolved, estimates = estimator.estimate(Ry, self.sources.size)
+                
+                # 计算MSE
+                if resolved:
+                    mse = np.mean((estimates.locations - self.sources.locations)**2)
+                    total_mse += mse
+                else:
+                    # 如果未解析，使用较大的MSE值
+                    total_mse += np.pi**2  # 最大可能的角度误差平方
+            
+            # 计算平均MSE
+            avg_mse = total_mse / self.n_monte_carlo
+            
+            # 根据指标类型计算结果
+            for metric in self.metrics:
+                if metric == 'mse':
+                    metric_results[metric] = avg_mse
+                else:  # rmse
+                    metric_results[metric] = np.sqrt(avg_mse)
+            
+            # 添加估计器结果
+            result.add_estimator_result(estimator_name, metric_results)
+        
+        # 计算总时间
+        result.computation_time = time.time() - start_time
+        
+        # 返回结果
+        return result
+
+
+def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
+                         estimators, crb_types=None, metrics=None):
+    """性能评估函数，用于快速评估DOA算法性能。
+    
+    该函数是DOAPerformanceEvaluator类的简化接口，方便用户直接调用。
+    
+    Args:
+        array (~doatools.model.arrays.ArrayDesign): 阵列设计。
+        sources (~doatools.model.sources.FarField1DSourcePlacement): 信源位置。
+        snr (float): 信噪比（dB）。
+        n_snapshots (int): 快照数。
+        n_monte_carlo (int): 蒙特卡洛模拟次数。
+        estimators (dict or list or object): DOA估计算法实例或实例列表或字典。
+        crb_types (list or str, optional): CRLB类型列表或单个类型，
+            可选值：'sto'（随机CRB）、'det'（确定性CRB）、'stouc'（随机无相关CRB）。
+            默认值为['sto']。
+        metrics (list or str, optional): 评估指标列表或单个指标，
+            可选值：'mse'（均方误差）、'rmse'（均方根误差）。
+            默认值为['mse']。
+    
+    Returns:
+        PerformanceResult: 评估结果对象。
+    """
+    evaluator = DOAPerformanceEvaluator(
+        array=array,
+        sources=sources,
+        snr=snr,
+        n_snapshots=n_snapshots,
+        n_monte_carlo=n_monte_carlo,
+        estimators=estimators,
+        crb_types=crb_types,
+        metrics=metrics
+    )
+    return evaluator.evaluate()
