@@ -38,7 +38,7 @@ class CoarrayACMBuilder1D:
     @property
     def output_size(self):
         """Retrieves the size of the output/transformed covariance matrix."""
-        return self._w.get_central_ula_size(True)
+        return self._w.get_max_aperture_size(True)
     
     def get_virtual_ula(self, name=None):
         """Retrieves the corresponding virtual uniform linear array.
@@ -84,13 +84,15 @@ class CoarrayACMBuilder1D:
         ensure_covariance_size(R, self._array)
         if method not in ['ss', 'da']:
             raise ValueError('Method can only be one of the following: ss, da.')
-        mc = self.output_size
+        mc = self._w.get_max_aperture_size()
         mv = (mc + 1) // 2
         z = np.zeros((mc,), dtype=np.complex128)
         r = vec(R)
         for i in range(mc):
             diff = i - mv + 1
-            z[i] = np.mean(r[self._w.indices_of(diff)])
+            indices = self._w.indices_of(diff)
+            if len(indices) > 0:
+                z[i] = np.mean(r[indices])
         Ra = np.zeros((mv, mv), dtype=np.complex128)
         if method == 'ss':
             # Spatial smoothing

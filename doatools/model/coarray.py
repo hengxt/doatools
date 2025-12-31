@@ -127,6 +127,23 @@ class WeightFunction1D:
             self._mv = mv
         return self._mv if exclude_negative_part else self._mv * 2 - 1 
     
+    def get_max_aperture_size(self, exclude_negative_part=False):
+        r"""Gets the size of the coarray based on the maximum aperture.
+        
+        Args:
+            exclude_negative_part (bool): Set to ``True`` to exclude the
+                virtual array elements corresponding to negative differences.
+                Default value is ``False``.
+        """
+        if len(self._differences) == 0:
+            return 0
+        max_diff = np.max(self._differences)
+        min_diff = np.min(self._differences)
+        if exclude_negative_part:
+            return max_diff + 1
+        else:
+            return max_diff - min_diff + 1
+    
     def get_coarray_selection_matrix(self, exclude_negative_part=False):
         r"""Gets the coarray selection matrix.
 
