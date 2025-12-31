@@ -73,7 +73,7 @@ def sorte(x):
         x: (~numpy.ndarray): A 1D vector of the eigenvalues of the covariance
             matrix in ascending order, or the covariance matrix itself.
     
-    Refereces:
+    References:
         [1] Z. He, A. Cichocke, S. Xie, and K. Choi, "Detecting the number of
         clusters in n-way probabilistic clustering," IEEE Trans. Pattern
         Anal. Mach. Intell., vol. 32, pp. 2006-2021, Nov. 2010.
