@@ -84,7 +84,7 @@ class CoarrayACMBuilder1D:
         ensure_covariance_size(R, self._array)
         if method not in ['ss', 'da']:
             raise ValueError('Method can only be one of the following: ss, da.')
-        mc = self._w.get_central_ula_size()
+        mc = self.output_size
         mv = (mc + 1) // 2
         z = np.zeros((mc,), dtype=np.complex128)
         r = vec(R)
