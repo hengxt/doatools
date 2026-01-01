@@ -16,6 +16,7 @@ class PerformanceResult:
         n_snapshots (int): 快照数。
         n_monte_carlo (int): 蒙特卡洛模拟次数。
         crb_values (dict): 不同类型CRB的值，键为CRB类型，值为CRB值。
+        crb_results (dict): 与crb_values相同，为向后兼容而提供的别名。
         estimator_results (dict): 不同估计器的结果，键为估计器名称，
             值为包含不同指标的字典，键为指标名称，值为指标值。
         computation_time (float): 总计算时间（秒）。
@@ -26,6 +27,7 @@ class PerformanceResult:
         self.n_snapshots = n_snapshots
         self.n_monte_carlo = n_monte_carlo
         self.crb_values = {}
+        self.crb_results = self.crb_values  # 别名，保持向后兼容
         self.estimator_results = {}
         self.computation_time = 0.0
     
@@ -63,8 +65,14 @@ class PerformanceResult:
         for estimator_name, metric_results in self.estimator_results.items():
             s += f"  {estimator_name}:\n"
             for metric, value in metric_results.items():
-                unit = "rad²" if metric == "mse" else "rad"
-                s += f"    {metric.upper():<10}: {value:12.6e} {unit}\n"
+                # 确定单位
+                if metric in ['bias', 'mae', 'rmse']:
+                    unit = "rad"
+                elif metric == 'mse':
+                    unit = "rad²"
+                else:  # 自定义指标
+                    unit = ""
+                s += f"    {metric.upper():<15}: {value:12.6e} {unit}\n"
         s += "\n"
         
         # 打印计算时间
@@ -175,7 +183,7 @@ class DOAPerformanceEvaluator:
                 raise ValueError(f'crb_type {crb_type} must be one of: {valid_crb_types}')
         
         # 验证指标
-        valid_metrics = ['mse', 'rmse']
+        valid_metrics = ['bias', 'mae', 'mse', 'rmse']
         for metric in self.metrics:
             if metric not in valid_metrics:
                 raise ValueError(f'metric {metric} must be one of: {valid_metrics}')
@@ -223,8 +231,13 @@ class DOAPerformanceEvaluator:
                                        return_mode='mean_diag')
         return crb
     
-    def evaluate(self):
+    def evaluate(self, custom_metrics=None):
         """执行性能评估。
+        
+        Args:
+            custom_metrics (dict, optional): 自定义评价指标字典，键为指标名称，
+                值为接受两个参数（估计位置和真实位置）的函数，返回指标值。
+                例如：{'mae': lambda est, true: np.mean(np.abs(est - true))}
         
         Returns:
             PerformanceResult: 评估结果对象。
@@ -246,13 +259,19 @@ class DOAPerformanceEvaluator:
             crb_value = self._compute_crb(crb_type, reference_wavelength)
             result.add_crb(crb_type, crb_value)
         
+        # 处理自定义指标
+        if custom_metrics is None:
+            custom_metrics = {}
+        
         # 对每个估计器执行蒙特卡洛模拟
         for estimator_name, estimator in self.estimators.items():
             # 初始化指标结果字典
             metric_results = {}
             
-            # 执行蒙特卡洛模拟，计算MSE
-            total_mse = 0.0
+            # 存储所有成功估计的位置，用于计算偏差和其他指标
+            all_estimates = []
+            
+            # 执行蒙特卡洛模拟
             for _ in range(self.n_monte_carlo):
                 # 生成信号和噪声
                 S = self.source_signal.emit(self.n_snapshots)
@@ -276,23 +295,63 @@ class DOAPerformanceEvaluator:
                     # 方法不接受d0参数，如MUSIC
                     resolved, estimates = estimator.estimate(Ry, self.sources.size)
                 
-                # 计算MSE
+                # 保存成功的估计
                 if resolved:
-                    mse = np.mean((estimates.locations - self.sources.locations)**2)
-                    total_mse += mse
-                else:
-                    # 如果未解析，使用较大的MSE值
-                    total_mse += np.pi**2  # 最大可能的角度误差平方
+                    all_estimates.append(estimates.locations)
             
-            # 计算平均MSE
-            avg_mse = total_mse / self.n_monte_carlo
+            # 计算基本统计量
+            if len(all_estimates) > 0:
+                # 将列表转换为数组 (n_runs, n_sources)
+                all_estimates = np.array(all_estimates)
+                true_locations = self.sources.locations
+                
+                # 计算偏差 (每个信源的平均偏差，然后取平均值)
+                biases = np.mean(all_estimates - true_locations, axis=0)
+                avg_bias = np.mean(np.abs(biases))
+                
+                # 计算MSE (每个信源的MSE，然后取平均值)
+                mse_per_source = np.mean((all_estimates - true_locations)**2, axis=0)
+                avg_mse = np.mean(mse_per_source)
+                
+                # 计算RMSE
+                avg_rmse = np.sqrt(avg_mse)
+                
+                # 计算MAE (每个信源的MAE，然后取平均值)
+                mae_per_source = np.mean(np.abs(all_estimates - true_locations), axis=0)
+                avg_mae = np.mean(mae_per_source)
+            else:
+                # 如果没有成功的估计，使用较大的默认值
+                avg_bias = np.pi
+                avg_mse = np.pi**2
+                avg_rmse = np.pi
+                avg_mae = np.pi
             
-            # 根据指标类型计算结果
+            # 保存内置指标结果
+            metric_values = {
+                'bias': avg_bias,
+                'mae': avg_mae,
+                'mse': avg_mse,
+                'rmse': avg_rmse
+            }
+            
+            # 计算并保存用户指定的指标
             for metric in self.metrics:
-                if metric == 'mse':
-                    metric_results[metric] = avg_mse
-                else:  # rmse
-                    metric_results[metric] = np.sqrt(avg_mse)
+                if metric in metric_values:
+                    metric_results[metric] = metric_values[metric]
+            
+            # 计算并保存自定义指标
+            if len(all_estimates) > 0:
+                for custom_name, custom_func in custom_metrics.items():
+                    # 对每个信源计算自定义指标，然后取平均值
+                    custom_per_source = []
+                    for i in range(true_locations.size):
+                        custom_value = custom_func(all_estimates[:, i], true_locations[i])
+                        custom_per_source.append(custom_value)
+                    metric_results[custom_name] = np.mean(custom_per_source)
+            else:
+                # 如果没有成功的估计，使用较大的默认值
+                for custom_name in custom_metrics:
+                    metric_results[custom_name] = np.pi
             
             # 添加估计器结果
             result.add_estimator_result(estimator_name, metric_results)
@@ -305,7 +364,7 @@ class DOAPerformanceEvaluator:
 
 
 def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
-                         estimators, crb_types=None, metrics=None):
+                         estimators, crb_types=None, metrics=None, custom_metrics=None):
     """性能评估函数，用于快速评估DOA算法性能。
     
     该函数是DOAPerformanceEvaluator类的简化接口，方便用户直接调用。
@@ -321,8 +380,11 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
             可选值：'sto'（随机CRB）、'det'（确定性CRB）、'stouc'（随机无相关CRB）。
             默认值为['sto']。
         metrics (list or str, optional): 评估指标列表或单个指标，
-            可选值：'mse'（均方误差）、'rmse'（均方根误差）。
+            可选值：'bias'（偏差）、'mae'（平均绝对误差）、'mse'（均方误差）、'rmse'（均方根误差）。
             默认值为['mse']。
+        custom_metrics (dict, optional): 自定义评价指标字典，键为指标名称，
+            值为接受两个参数（估计位置和真实位置）的函数，返回指标值。
+            例如：{'custom_metric': lambda est, true: np.mean(np.abs(est - true))}
     
     Returns:
         PerformanceResult: 评估结果对象。
@@ -337,4 +399,4 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
         crb_types=crb_types,
         metrics=metrics
     )
-    return evaluator.evaluate()
+    return evaluator.evaluate(custom_metrics)
