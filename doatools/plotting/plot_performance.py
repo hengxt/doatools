@@ -24,11 +24,10 @@ _GLOBAL_CONFIG = {
     'default_markers': ['x', 'o', 's', '^', 'v', '<', '>', 'D', 'p', '*']
 }
 
-# 设置全局字体
+# 设置全局字体和图例配置
 plt.rcParams.update({
     'font.family': 'Times New Roman',
     'font.sans-serif': ['Times New Roman', 'Arial', 'DejaVu Sans'],
-    'font.size': 10
 })
 
 
@@ -147,7 +146,7 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.grid(True, which='both', linestyle='--', alpha=0.7)
-    ax.legend(loc='lower left', ncol=2, fontsize=10)
+    ax.legend(ncol=2)
     
     if title:
         ax.set_title(title)
@@ -211,7 +210,7 @@ def plot_scatter_estimates(true_angles: np.ndarray, estimates: np.ndarray,
     ax.set_xlabel(f'True {angle_label}')
     ax.set_ylabel(f'Estimated {angle_label}')
     ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='upper left', ncol=2, fontsize=10)
+    ax.legend(ncol=2)
     ax.set_title(f'True vs. Estimated Angles for {algorithm_name}')
     
     ax.axis('equal')
@@ -271,7 +270,7 @@ def plot_cdf(estimates: np.ndarray, true_angles: np.ndarray, algorithm_name: str
     ax.set_xlabel(f'{metric_name} ({metric_unit})')
     ax.set_ylabel('CDF')
     ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='lower right', fontsize=10)
+    ax.legend()
     ax.set_title(f'CDF of {metric_name} for {algorithm_name}')
     
     ax.margins(x=0)
@@ -328,8 +327,8 @@ def plot_histogram(estimates: np.ndarray, true_angles: np.ndarray, algorithm_nam
         color, _ = get_doa_method_style(algorithm_name, i)
         # 提取第i个信源的误差
         source_errors = errors[:, i]
-        # 绘制直方图
-        ax.hist(source_errors, bins=bins, color=color, alpha=0.7, density=True)
+        # 绘制直方图，添加信源标签
+        ax.hist(source_errors, bins=bins, color=color, alpha=0.7, density=True, label=f'Source {i+1}')
         # 绘制真实角度位置的垂直线
         true_angle = true_angles[0, i]  # 所有蒙特卡洛模拟中真实角度相同
         ax.axvline(x=0, color='k', linestyle='--', linewidth=2, label='Zero Error')
@@ -337,7 +336,7 @@ def plot_histogram(estimates: np.ndarray, true_angles: np.ndarray, algorithm_nam
         ax.set_xlabel(angle_label)
         ax.set_ylabel('Probability Density')
         ax.grid(True, linestyle='--', alpha=0.7)
-        ax.legend(loc='upper right', fontsize=10)
+        ax.legend()
         ax.set_title(f'Error Distribution for {algorithm_name} - Source {i+1}')
     
     if show_plot:
@@ -393,7 +392,7 @@ def plot_resolution_comparison(delta_thetas: np.ndarray, success_rates: Dict[str
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Success Rate')
     ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='lower right', ncol=2, fontsize=10)
+    ax.legend(ncol=2)
     
     if title:
         ax.set_title(title)
