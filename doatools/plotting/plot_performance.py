@@ -87,7 +87,7 @@ def get_doa_method_style(method_name, index=0):
 
 def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np.ndarray], 
                             parameter_name: str, metric_name: str, parameter_unit: str = '', 
-                            metric_unit: str = '', title: str = '', show_crb: bool = False, 
+                            metric_unit: str = '', show_crb: bool = False, 
                             crb_values: Optional[np.ndarray] = None, crb_label: str = 'CRB',
                             ax: Optional[plt.Axes] = None):
     """绘制指标随参数变化的折线图。
@@ -99,7 +99,6 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
         metric_name (str): 指标名称，用于y轴标签和图例。
         parameter_unit (str, optional): 参数单位，用于x轴标签。默认值为空字符串。
         metric_unit (str, optional): 指标单位，用于y轴标签。默认值为空字符串。
-        title (str, optional): 图标题。默认值为空字符串。
         show_crb (bool, optional): 是否显示CRB曲线。默认值为False。
         crb_values (Optional[np.ndarray], optional): CRB值数组。默认值为None。
         crb_label (str, optional): CRB曲线的图例标签。默认值为'CRB'。
@@ -147,11 +146,6 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
     ax.set_ylabel(ylabel)
     ax.grid(True, which='both', linestyle='--', alpha=0.7)
     ax.legend(ncol=2)
-    
-    if title:
-        ax.set_title(title)
-    else:
-        ax.set_title(f'{metric_name} vs. {parameter_name} for Multiple DOA Algorithms')
     
     ax.margins(x=0)
     
@@ -211,7 +205,6 @@ def plot_scatter_estimates(true_angles: np.ndarray, estimates: np.ndarray,
     ax.set_ylabel(f'Estimated {angle_label}')
     ax.grid(True, linestyle='--', alpha=0.7)
     ax.legend(ncol=2)
-    ax.set_title(f'True vs. Estimated Angles for {algorithm_name}')
     
     ax.axis('equal')
     
@@ -271,7 +264,6 @@ def plot_cdf(estimates: np.ndarray, true_angles: np.ndarray, algorithm_name: str
     ax.set_ylabel('CDF')
     ax.grid(True, linestyle='--', alpha=0.7)
     ax.legend()
-    ax.set_title(f'CDF of {metric_name} for {algorithm_name}')
     
     ax.margins(x=0)
     
@@ -337,7 +329,6 @@ def plot_histogram(estimates: np.ndarray, true_angles: np.ndarray, algorithm_nam
         ax.set_ylabel('Probability Density')
         ax.grid(True, linestyle='--', alpha=0.7)
         ax.legend()
-        ax.set_title(f'Error Distribution for {algorithm_name} - Source {i+1}')
     
     if show_plot:
         plt.tight_layout()
@@ -345,7 +336,7 @@ def plot_histogram(estimates: np.ndarray, true_angles: np.ndarray, algorithm_nam
 
 
 def plot_resolution_comparison(delta_thetas: np.ndarray, success_rates: Dict[str, np.ndarray], 
-                               parameter_unit: str = 'rad', title: str = '',
+                               parameter_unit: str = 'rad',
                                ax: Optional[plt.Axes] = None):
     """绘制不同算法的分辨率比较图。
     
@@ -353,7 +344,6 @@ def plot_resolution_comparison(delta_thetas: np.ndarray, success_rates: Dict[str
         delta_thetas (np.ndarray): 角度间隔数组。
         success_rates (Dict[str, np.ndarray]): 不同算法的成功分辨率字典，键为算法名称，值为成功分辨率数组。
         parameter_unit (str, optional): 角度单位，'rad'或'deg'。默认值为'rad'。
-        title (str, optional): 图标题。默认值为空字符串。
         ax (Optional[plt.Axes], optional): 外部提供的matplotlib轴对象。如果为None，将创建新图。
             默认值为None。
     """
@@ -393,11 +383,7 @@ def plot_resolution_comparison(delta_thetas: np.ndarray, success_rates: Dict[str
     ax.set_ylabel('Success Rate')
     ax.grid(True, linestyle='--', alpha=0.7)
     ax.legend(ncol=2)
-    
-    if title:
-        ax.set_title(title)
-    else:
-        ax.set_title('Resolution Comparison for Multiple DOA Algorithms')
+
     
     ax.set_ylim([0, 1.05])
     ax.margins(x=0)

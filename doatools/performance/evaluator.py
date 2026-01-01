@@ -27,8 +27,8 @@ class PerformanceResult:
         self.n_snapshots = n_snapshots
         self.n_monte_carlo = n_monte_carlo
         self.crb_values = {}
-        self.crb_results = self.crb_values  # 别名，保持向后兼容
         self.estimator_results = {}
+        self.sample_estimates = {}
         self.computation_time = 0.0
     
     def add_crb(self, crb_type, value):
@@ -40,14 +40,17 @@ class PerformanceResult:
         """
         self.crb_values[crb_type] = value
     
-    def add_estimator_result(self, estimator_name, metric_results):
+    def add_estimator_result(self, estimator_name, metric_results, sample_estimates=None):
         """添加估计器结果。
         
         Args:
             estimator_name (str): 估计器名称。
             metric_results (dict): 指标结果，键为指标名称，值为指标值。
+            sample_estimates (array, optional): 样本估计值数组，形状为(n_runs, n_sources)。
         """
         self.estimator_results[estimator_name] = metric_results
+        if sample_estimates is not None:
+            self.sample_estimates[estimator_name] = sample_estimates
     
     def __str__(self):
         """返回结果的字符串表示。"""
@@ -93,7 +96,7 @@ class DOAPerformanceEvaluator:
     """
     
     def __init__(self, array, sources, snr, n_snapshots, n_monte_carlo,
-                 estimators, crb_types=None, metrics=None):
+                 estimators, crb_types=None, metrics=None, save_sample_estimates=False):
         """初始化性能评估器。
         
         Args:
@@ -112,6 +115,7 @@ class DOAPerformanceEvaluator:
             metrics (list or str, optional): 评估指标列表或单个指标，
                 可选值：'mse'（均方误差）、'rmse'（均方根误差）。
                 默认值为['mse']。
+            save_sample_estimates (bool, optional): 是否保存采样估计值。默认值为False。
         """
         self.array = array
         self.sources = sources
@@ -138,6 +142,9 @@ class DOAPerformanceEvaluator:
         
         # 验证输入参数
         self._validate_inputs()
+        
+        # 保存是否保存样本估计值的标志
+        self.save_sample_estimates = save_sample_estimates
         
         # 预计算一些参数
         self._precompute_parameters()
@@ -353,8 +360,9 @@ class DOAPerformanceEvaluator:
                 for custom_name in custom_metrics:
                     metric_results[custom_name] = np.pi
             
-            # 添加估计器结果
-            result.add_estimator_result(estimator_name, metric_results)
+            # 添加估计器结果，根据配置决定是否包括样本估计值
+            sample_estimates = all_estimates if (self.save_sample_estimates and len(all_estimates) > 0) else None
+            result.add_estimator_result(estimator_name, metric_results, sample_estimates)
         
         # 计算总时间
         result.computation_time = time.time() - start_time
@@ -364,7 +372,8 @@ class DOAPerformanceEvaluator:
 
 
 def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
-                         estimators, crb_types=None, metrics=None, custom_metrics=None):
+                         estimators, crb_types=None, metrics=None, custom_metrics=None,
+                         save_sample_estimates=False):
     """性能评估函数，用于快速评估DOA算法性能。
     
     该函数是DOAPerformanceEvaluator类的简化接口，方便用户直接调用。
@@ -385,6 +394,7 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
         custom_metrics (dict, optional): 自定义评价指标字典，键为指标名称，
             值为接受两个参数（估计位置和真实位置）的函数，返回指标值。
             例如：{'custom_metric': lambda est, true: np.mean(np.abs(est - true))}
+        save_sample_estimates (bool, optional): 是否保存采样估计值。默认值为False。
     
     Returns:
         PerformanceResult: 评估结果对象。
@@ -397,6 +407,7 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
         n_monte_carlo=n_monte_carlo,
         estimators=estimators,
         crb_types=crb_types,
-        metrics=metrics
+        metrics=metrics,
+        save_sample_estimates=save_sample_estimates
     )
     return evaluator.evaluate(custom_metrics)
