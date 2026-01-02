@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 
 # 全局配置，允许用户自定义
 _GLOBAL_CONFIG = {
@@ -213,32 +213,35 @@ def plot_scatter_estimates(true_angles: np.ndarray, estimates: np.ndarray,
         plt.show()
 
 
-def plot_cdf(estimates: np.ndarray, true_angles: np.ndarray, algorithm_name: str, 
-             metric_name: str = 'Error', metric_unit: str = 'rad',
+def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: np.ndarray, 
+             algorithm_name: Union[str, None] = None, metric_name: str = 'Error', 
+             metric_unit: str = 'rad', metric_type: str = 'absolute',
              ax: Optional[plt.Axes] = None):
     """绘制估计误差的CDF（累积分布函数）图。
     
+    支持两种模式：
+    1. 单个算法模式：绘制单个算法的CDF
+    2. 多算法比较模式：绘制多个算法的CDF比较
+    
     Args:
-        estimates (np.ndarray): 估计角度数组，形状为(n_monte_carlo, n_sources)。
+        estimates (Union[np.ndarray, Dict[str, np.ndarray]]): 
+            - 单个算法：估计角度数组，形状为(n_monte_carlo, n_sources)。
+            - 多算法比较：字典，键为算法名称，值为对应的估计角度数组。
         true_angles (np.ndarray): 真实角度数组，形状为(n_monte_carlo, n_sources)或(n_sources,)。
-        algorithm_name (str): 算法名称，用于标题和图例。
+        algorithm_name (Union[str, None], optional): 
+            - 单个算法：算法名称，用于标题和图例。
+            - 多算法比较：None，忽略此参数。
+            默认值为None。
         metric_name (str, optional): 误差指标名称，用于x轴标签。默认值为'Error'。
         metric_unit (str, optional): 误差单位，用于x轴标签。默认值为'rad'。
+        metric_type (str, optional): 误差类型，可选值：
+            - 'absolute': 绝对误差
+            - 'rms': 均方根误差
+            - 'mae': 平均绝对误差
+            默认值为'absolute'。
         ax (Optional[plt.Axes], optional): 外部提供的matplotlib轴对象。如果为None，将创建新图。
             默认值为None。
     """
-    # 确保true_angles形状与estimates一致
-    if true_angles.ndim == 1:
-        true_angles = np.tile(true_angles, (estimates.shape[0], 1))
-    
-    # 计算误差
-    errors = np.abs(estimates - true_angles)
-    # 转换为度（如果需要）
-    if metric_unit == 'deg':
-        errors = np.rad2deg(errors)
-    
-    n_sources = errors.shape[1]
-    
     # 创建或使用提供的轴
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -246,19 +249,105 @@ def plot_cdf(estimates: np.ndarray, true_angles: np.ndarray, algorithm_name: str
     else:
         show_plot = False
     
-    # 绘制每个信源的CDF
-    for i in range(n_sources):
-        # 获取对应的颜色和标记
-        color, _ = get_doa_method_style(algorithm_name, i)
-        # 提取第i个信源的误差
-        source_errors = errors[:, i]
-        # 排序误差
-        sorted_errors = np.sort(source_errors)
-        # 计算CDF值
-        cdf = np.arange(1, len(sorted_errors) + 1) / len(sorted_errors)
-        # 绘制CDF
-        ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
-                label=f'{algorithm_name} - Source {i+1}')
+    # 确保true_angles形状正确
+    if true_angles.ndim == 1:
+        # 单个算法情况
+        if isinstance(estimates, np.ndarray):
+            true_angles_repeated = np.tile(true_angles, (estimates.shape[0], 1))
+        # 多算法情况，获取第一个算法的形状
+        else:
+            first_alg = next(iter(estimates.keys()))
+            true_angles_repeated = np.tile(true_angles, (estimates[first_alg].shape[0], 1))
+    else:
+        true_angles_repeated = true_angles
+    
+    # 处理单个算法情况
+    if isinstance(estimates, np.ndarray):
+        if algorithm_name is None:
+            algorithm_name = 'Algorithm'
+        
+        # 计算误差
+        if metric_type == 'absolute':
+            errors = np.abs(estimates - true_angles_repeated)
+        elif metric_type == 'rms':
+            errors = np.sqrt(np.mean(np.square(estimates - true_angles_repeated), axis=1))
+            errors = errors[:, np.newaxis]  # 转为(n_monte_carlo, 1)
+        elif metric_type == 'mae':
+            errors = np.mean(np.abs(estimates - true_angles_repeated), axis=1)
+            errors = errors[:, np.newaxis]  # 转为(n_monte_carlo, 1)
+        else:
+            raise ValueError(f"Unknown metric_type: {metric_type}")
+        
+        # 转换为度（如果需要）
+        if metric_unit == 'deg':
+            if metric_type in ['rms', 'mae']:
+                errors = np.rad2deg(errors)
+            else:
+                errors = np.rad2deg(errors)
+        
+        n_sources = errors.shape[1]
+        
+        # 绘制每个信源的CDF
+        for i in range(n_sources):
+            # 获取对应的颜色和标记
+            color, _ = get_doa_method_style(algorithm_name, i)
+            # 提取第i个信源的误差
+            source_errors = errors[:, i]
+            # 排序误差
+            sorted_errors = np.sort(source_errors)
+            # 计算CDF值
+            cdf = np.arange(1, len(sorted_errors) + 1) / len(sorted_errors)
+            # 绘制CDF
+            ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
+                    label=f'{algorithm_name} - Source {i+1}')
+    # 处理多算法比较情况
+    elif isinstance(estimates, dict):
+        # 遍历每个算法
+        for i, (alg_name, alg_estimates) in enumerate(estimates.items()):
+            # 确保真实角度形状与当前算法估计值一致
+            if true_angles.ndim == 1:
+                current_true_angles = np.tile(true_angles, (alg_estimates.shape[0], 1))
+            else:
+                current_true_angles = true_angles
+            
+            # 计算误差
+            if metric_type == 'absolute':
+                errors = np.abs(alg_estimates - current_true_angles)
+                # 对每个信源单独处理
+                n_sources = errors.shape[1]
+                for j in range(n_sources):
+                    source_errors = errors[:, j]
+                    sorted_errors = np.sort(source_errors)
+                    cdf = np.arange(1, len(sorted_errors) + 1) / len(sorted_errors)
+                    color, _ = get_doa_method_style(alg_name, j)
+                    ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
+                            label=f'{alg_name} - Source {j+1}')
+            elif metric_type in ['rms', 'mae']:
+                # 计算每个蒙特卡洛样本的整体指标
+                if metric_type == 'rms':
+                    # 每个样本的RMS（所有信源的均方根）
+                    sample_errors = np.sqrt(np.mean(np.square(alg_estimates - current_true_angles), axis=1))
+                else:  # mae
+                    # 每个样本的MAE（所有信源的平均绝对误差）
+                    sample_errors = np.mean(np.abs(alg_estimates - current_true_angles), axis=1)
+                
+                # 转换为度（如果需要）
+                if metric_unit == 'deg':
+                    sample_errors = np.rad2deg(sample_errors)
+                
+                # 排序误差
+                sorted_errors = np.sort(sample_errors)
+                # 计算CDF值
+                cdf = np.arange(1, len(sorted_errors) + 1) / len(sorted_errors)
+                # 获取对应的颜色和标记
+                color, marker = get_doa_method_style(alg_name, i)
+                # 绘制CDF
+                ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
+                        label=alg_name)
+            else:
+                raise ValueError(f"Unknown metric_type: {metric_type}")
+    else:
+        raise ValueError(f"estimates must be either np.ndarray or dict, got {type(estimates)}")
     
     ax.set_xlabel(f'{metric_name} ({metric_unit})')
     ax.set_ylabel('CDF')
@@ -271,123 +360,3 @@ def plot_cdf(estimates: np.ndarray, true_angles: np.ndarray, algorithm_name: str
         plt.tight_layout()
         plt.show()
 
-
-def plot_histogram(estimates: np.ndarray, true_angles: np.ndarray, algorithm_name: str, 
-                   bins: int = 50, metric_unit: str = 'rad',
-                   axes: Optional[List[plt.Axes]] = None):
-    """绘制估计误差的直方图。
-    
-    Args:
-        estimates (np.ndarray): 估计角度数组，形状为(n_monte_carlo, n_sources)。
-        true_angles (np.ndarray): 真实角度数组，形状为(n_monte_carlo, n_sources)或(n_sources,)。
-        algorithm_name (str): 算法名称，用于标题。
-        bins (int, optional): 直方图的分箱数。默认值为50。
-        metric_unit (str, optional): 角度单位，'rad'或'deg'。默认值为'rad'。
-        axes (Optional[List[plt.Axes]], optional): 外部提供的matplotlib轴对象列表。
-            长度必须与信源数量匹配。如果为None，将创建新图。默认值为None。
-    """
-    # 确保true_angles形状与estimates一致
-    if true_angles.ndim == 1:
-        true_angles = np.tile(true_angles, (estimates.shape[0], 1))
-    
-    # 计算误差
-    errors = estimates - true_angles
-    # 转换为度（如果需要）
-    if metric_unit == 'deg':
-        errors = np.rad2deg(errors)
-        angle_label = 'Error (degrees)'
-    else:
-        angle_label = 'Error (radians)'
-    
-    n_sources = errors.shape[1]
-    
-    # 创建或使用提供的轴
-    if axes is None:
-        fig, axes = plt.subplots(n_sources, 1, figsize=(12, 3 * n_sources))
-        if n_sources == 1:
-            axes = [axes]  # 确保axes是列表
-        show_plot = True
-    else:
-        # 验证提供的轴数量是否与信源数量匹配
-        if len(axes) != n_sources:
-            raise ValueError(f"Expected {n_sources} axes for {n_sources} sources, got {len(axes)}")
-        show_plot = False
-    
-    # 为每个信源绘制直方图
-    for i, ax in enumerate(axes):
-        # 获取对应的颜色
-        color, _ = get_doa_method_style(algorithm_name, i)
-        # 提取第i个信源的误差
-        source_errors = errors[:, i]
-        # 绘制直方图，添加信源标签
-        ax.hist(source_errors, bins=bins, color=color, alpha=0.7, density=True, label=f'Source {i+1}')
-        # 绘制真实角度位置的垂直线
-        true_angle = true_angles[0, i]  # 所有蒙特卡洛模拟中真实角度相同
-        ax.axvline(x=0, color='k', linestyle='--', linewidth=2, label='Zero Error')
-        
-        ax.set_xlabel(angle_label)
-        ax.set_ylabel('Probability Density')
-        ax.grid(True, linestyle='--', alpha=0.7)
-        ax.legend()
-    
-    if show_plot:
-        plt.tight_layout()
-        plt.show()
-
-
-def plot_resolution_comparison(delta_thetas: np.ndarray, success_rates: Dict[str, np.ndarray], 
-                               parameter_unit: str = 'rad',
-                               ax: Optional[plt.Axes] = None):
-    """绘制不同算法的分辨率比较图。
-    
-    Args:
-        delta_thetas (np.ndarray): 角度间隔数组。
-        success_rates (Dict[str, np.ndarray]): 不同算法的成功分辨率字典，键为算法名称，值为成功分辨率数组。
-        parameter_unit (str, optional): 角度单位，'rad'或'deg'。默认值为'rad'。
-        ax (Optional[plt.Axes], optional): 外部提供的matplotlib轴对象。如果为None，将创建新图。
-            默认值为None。
-    """
-    # 创建或使用提供的轴
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(12, 6))
-        show_plot = True
-    else:
-        show_plot = False
-    
-    # 设置x轴标签
-    if parameter_unit == 'deg':
-        xlabel = 'Angular Separation (degrees)'
-    else:
-        xlabel = 'Angular Separation (radians)'
-    
-    # 绘制每个算法的曲线，使用与DOA方法对应的颜色和标记
-    for i, (algorithm, rates) in enumerate(success_rates.items()):
-        # 从算法名称中提取方法名
-        method_name = algorithm
-        # 处理类似'RootMUSIC1D'的情况
-        if method_name.endswith('1D'):
-            method_name = method_name[:-2]
-        # 处理类似'CoarrayACMBuilder1D'的情况
-        if method_name.endswith('Builder'):
-            method_name = method_name[:-7]
-        
-        # 获取对应的颜色和标记
-        color, marker = get_doa_method_style(method_name, i)
-        ax.plot(delta_thetas, rates, f'-{marker}', color=color, 
-                linewidth=1.5, markersize=8, label=algorithm)
-    
-    # 绘制50%成功率线
-    ax.axhline(y=0.5, color='k', linestyle='--', linewidth=2, label='50% Success Rate')
-    
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel('Success Rate')
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(ncol=2)
-
-    
-    ax.set_ylim([0, 1.05])
-    ax.margins(x=0)
-    
-    if show_plot:
-        plt.tight_layout()
-        plt.show()

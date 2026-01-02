@@ -4,6 +4,4 @@ from .plot_performance import (
     plot_metric_vs_parameter,
     plot_scatter_estimates,
     plot_cdf,
-    plot_histogram,
-    plot_resolution_comparison
 )
