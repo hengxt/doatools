@@ -2,29 +2,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple, Optional, Union
 
-# 全局配置，允许用户自定义
+# Global configuration that allows user customization
 _GLOBAL_CONFIG = {
-    # DOA估计方法与颜色、标记的对应关系
+    # Mapping between DOA estimation methods and their colors/markers
     'doa_method_styles': {
-        # 子空间方法
+        # Subspace methods
         'RootMUSIC': {'color': 'b', 'marker': 'x'},
         'MUSIC': {'color': 'g', 'marker': 'o'},
         'ESPRIT': {'color': 'r', 'marker': 's'},
         'MinNorm': {'color': 'purple', 'marker': '*'},
-        # 波束形成方法
+        # Beamforming methods
         'MVDR': {'color': 'c', 'marker': '^'},
         'Bartlett': {'color': 'm', 'marker': 'v'},
-        # 其他方法
+        # Other methods
         'Interferometer': {'color': 'y', 'marker': '<'},
         'CoarrayACMBuilder': {'color': 'orange', 'marker': '>'}
     },
-    # 默认颜色循环，当遇到未知方法时使用
+    # Default color cycle for unknown methods
     'default_colors': ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'orange', 'purple', 'brown'],
-    # 默认标记循环
+    # Default marker cycle for unknown methods
     'default_markers': ['x', 'o', 's', '^', 'v', '<', '>', 'D', 'p', '*']
 }
 
-# 设置全局字体和图例配置
+# Set global font and legend configuration
 plt.rcParams.update({
     'font.family': 'Times New Roman',
     'font.sans-serif': ['Times New Roman', 'Arial', 'DejaVu Sans'],
@@ -32,21 +32,21 @@ plt.rcParams.update({
 
 
 def get_global_config():
-    """获取全局配置字典。
+    """Gets the global configuration dictionary.
     
     Returns:
-        dict: 全局配置字典，可以直接修改来全局改变绘图样式。
+        dict: The global configuration dictionary, which can be modified directly to globally change plotting styles.
     """
     return _GLOBAL_CONFIG
 
 
 def set_doa_method_style(method_name, color=None, marker=None):
-    """设置特定DOA估计方法的样式。
+    """Sets the style for a specific DOA estimation method.
     
     Args:
-        method_name (str): DOA估计方法名称。
-        color (str, optional): 颜色字符串，如'b', 'g', 'r'等。
-        marker (str, optional): 标记字符串，如'x', 'o', 's'等。
+        method_name (str): Name of the DOA estimation method.
+        color (str, optional): Color string, e.g., 'b', 'g', 'r'.
+        marker (str, optional): Marker string, e.g., 'x', 'o', 's'.
     """
     if method_name not in _GLOBAL_CONFIG['doa_method_styles']:
         _GLOBAL_CONFIG['doa_method_styles'][method_name] = {}
@@ -57,17 +57,17 @@ def set_doa_method_style(method_name, color=None, marker=None):
 
 
 def get_doa_method_style(method_name, index=0):
-    """获取特定DOA估计方法的样式。
+    """Gets the style for a specific DOA estimation method.
     
     Args:
-        method_name (str): DOA估计方法名称。
-        index (int, optional): 当方法名不在配置中时，使用此索引从默认列表中获取样式。
-            默认值为0。
+        method_name (str): Name of the DOA estimation method.
+        index (int, optional): Index used to get style from default lists when the method name is not in the configuration.
+            Default value is 0.
     
     Returns:
-        tuple: (color, marker) 元组。
+        tuple: (color, marker) tuple.
     """
-    # 检查是否为已知方法
+    # Check if it's a known method
     config = _GLOBAL_CONFIG['doa_method_styles']
     default_colors = _GLOBAL_CONFIG['default_colors']
     default_markers = _GLOBAL_CONFIG['default_markers']
@@ -78,7 +78,7 @@ def get_doa_method_style(method_name, index=0):
         marker = style.get('marker', default_markers[index % len(default_markers)])
         return (color, marker)
     else:
-        # 未知方法，使用默认样式
+        # Unknown method, use default style
         return (
             default_colors[index % len(default_colors)],
             default_markers[index % len(default_markers)]
@@ -90,54 +90,55 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
                             metric_unit: str = '', show_crb: bool = False, 
                             crb_values: Optional[np.ndarray] = None, crb_label: str = 'CRB',
                             ax: Optional[plt.Axes] = None):
-    """绘制指标随参数变化的折线图。
+    """Plots a line graph of metric values versus parameter values.
     
     Args:
-        parameter_values (np.ndarray): 参数值数组。
-        results (Dict[str, np.ndarray]): 不同算法的指标结果字典，键为算法名称，值为对应指标值数组。
-        parameter_name (str): 参数名称，用于x轴标签。
-        metric_name (str): 指标名称，用于y轴标签和图例。
-        parameter_unit (str, optional): 参数单位，用于x轴标签。默认值为空字符串。
-        metric_unit (str, optional): 指标单位，用于y轴标签。默认值为空字符串。
-        show_crb (bool, optional): 是否显示CRB曲线。默认值为False。
-        crb_values (Optional[np.ndarray], optional): CRB值数组。默认值为None。
-        crb_label (str, optional): CRB曲线的图例标签。默认值为'CRB'。
-        ax (Optional[plt.Axes], optional): 外部提供的matplotlib轴对象。如果为None，将创建新图。
-            默认值为None。
+        parameter_values (np.ndarray): Array of parameter values.
+        results (Dict[str, np.ndarray]): Dictionary of metric results for different algorithms, 
+            where keys are algorithm names and values are corresponding metric value arrays.
+        parameter_name (str): Parameter name, used for the x-axis label.
+        metric_name (str): Metric name, used for the y-axis label and legend.
+        parameter_unit (str, optional): Parameter unit, used for the x-axis label. Default is an empty string.
+        metric_unit (str, optional): Metric unit, used for the y-axis label. Default is an empty string.
+        show_crb (bool, optional): Whether to show the CRB curve. Default value is False.
+        crb_values (Optional[np.ndarray], optional): Array of CRB values. Default value is None.
+        crb_label (str, optional): Legend label for the CRB curve. Default value is 'CRB'.
+        ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.
+            Default value is None.
     """
-    # 创建或使用提供的轴
+    # Create or use the provided axes
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 6))
         show_plot = True
     else:
         show_plot = False
     
-    # 设置x轴标签
+    # Set x-axis label
     xlabel = f'{parameter_name}'
     if parameter_unit:
         xlabel += f' ({parameter_unit})'
     
-    # 设置y轴标签
+    # Set y-axis label
     ylabel = f'{metric_name}'
     if metric_unit:
         ylabel += f' ({metric_unit})'
     
-    # 绘制CRB曲线（如果需要）
+    # Plot CRB curve if needed
     if show_crb and crb_values is not None:
         ax.semilogy(parameter_values, crb_values, '--k', linewidth=2, label=crb_label)
     
-    # 绘制每个算法的曲线，使用与DOA方法对应的颜色和标记
+    # Plot each algorithm's curve, using colors and markers corresponding to DOA methods
     for i, (algorithm, metric_values) in enumerate(results.items()):
-        # 从算法名称中提取方法名（去除末尾数字）
+        # Extract method name from algorithm name (remove trailing numbers)
         method_name = algorithm
-        # 处理类似'RootMUSIC1D'的情况
+        # Handle cases like 'RootMUSIC1D'
         if method_name.endswith('1D'):
             method_name = method_name[:-2]
-        # 处理类似'CoarrayACMBuilder1D'的情况
+        # Handle cases like 'CoarrayACMBuilder1D'
         if method_name.endswith('Builder'):
             method_name = method_name[:-7]
         
-        # 获取对应的颜色和标记
+        # Get corresponding color and marker
         color, marker = get_doa_method_style(method_name, i)
         ax.semilogy(parameter_values, metric_values, f'-{marker}', color=color, 
                    linewidth=1.5, markersize=8, label=algorithm)
@@ -157,21 +158,21 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
 def plot_scatter_estimates(true_angles: np.ndarray, estimates: np.ndarray, 
                           algorithm_name: str, angle_unit: str = 'rad',
                           ax: Optional[plt.Axes] = None):
-    """绘制真实角度与估计角度的散点图。
+    """Plots a scatter plot of true angles versus estimated angles.
     
     Args:
-        true_angles (np.ndarray): 真实角度数组，形状为(n_monte_carlo, n_sources)或(n_sources,)。
-        estimates (np.ndarray): 估计角度数组，形状为(n_monte_carlo, n_sources)。
-        algorithm_name (str): 算法名称，用于标题。
-        angle_unit (str, optional): 角度单位，'rad'或'deg'。默认值为'rad'。
-        ax (Optional[plt.Axes], optional): 外部提供的matplotlib轴对象。如果为None，将创建新图。
-            默认值为None。
+        true_angles (np.ndarray): Array of true angles, with shape (n_monte_carlo, n_sources) or (n_sources,).
+        estimates (np.ndarray): Array of estimated angles, with shape (n_monte_carlo, n_sources).
+        algorithm_name (str): Algorithm name, used for the title.
+        angle_unit (str, optional): Angle unit, 'rad' or 'deg'. Default value is 'rad'.
+        ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.
+            Default value is None.
     """
-    # 确保true_angles形状与estimates一致
+    # Ensure true_angles has the same shape as estimates
     if true_angles.ndim == 1:
         true_angles = np.tile(true_angles, (estimates.shape[0], 1))
     
-    # 转换为度（如果需要）
+    # Convert to degrees if needed
     if angle_unit == 'deg':
         true_angles = np.rad2deg(true_angles)
         estimates = np.rad2deg(estimates)
@@ -181,22 +182,22 @@ def plot_scatter_estimates(true_angles: np.ndarray, estimates: np.ndarray,
     
     n_sources = true_angles.shape[1]
     
-    # 创建或使用提供的轴
+    # Create or use the provided axes
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 6))
         show_plot = True
     else:
         show_plot = False
     
-    # 绘制每个信源的散点图
+    # Plot scatter points for each source
     for i in range(n_sources):
-        # 对于散点图，我们使用与信源索引对应的默认样式
-        # 因为这是单个算法的不同信源
+        # For scatter plots, we use default styles corresponding to source indices
+        # since this is for different sources of a single algorithm
         color, marker = get_doa_method_style(algorithm_name, i)
         ax.scatter(true_angles[:, i], estimates[:, i], color=color, marker=marker, 
                    s=50, alpha=0.6, label=f'Source {i+1}')
     
-    # 绘制理想线（y = x）
+    # Plot the ideal line (y = x)
     min_val = min(np.min(true_angles), np.min(estimates))
     max_val = max(np.max(true_angles), np.max(estimates))
     ax.plot([min_val, max_val], [min_val, max_val], '--k', linewidth=2, label='Ideal')
@@ -217,68 +218,68 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
              algorithm_name: Union[str, None] = None, metric_name: str = 'Error', 
              metric_unit: str = 'rad', metric_type: str = 'absolute',
              ax: Optional[plt.Axes] = None):
-    """绘制估计误差的CDF（累积分布函数）图。
+    """Plots the CDF (Cumulative Distribution Function) of estimation errors.
     
-    支持两种模式：
-    1. 单个算法模式：绘制单个算法的CDF
-    2. 多算法比较模式：绘制多个算法的CDF比较
+    Supports two modes:
+    1. Single algorithm mode: Plots the CDF for a single algorithm
+    2. Multi-algorithm comparison mode: Plots CDF comparisons for multiple algorithms
     
     Args:
         estimates (Union[np.ndarray, Dict[str, np.ndarray]]): 
-            - 单个算法：估计角度数组，形状为(n_monte_carlo, n_sources)。
-            - 多算法比较：字典，键为算法名称，值为对应的估计角度数组。
-        true_angles (np.ndarray): 真实角度数组，形状为(n_monte_carlo, n_sources)或(n_sources,)。
+            - Single algorithm: Array of estimated angles with shape (n_monte_carlo, n_sources).
+            - Multi-algorithm comparison: Dictionary where keys are algorithm names and values are corresponding estimated angle arrays.
+        true_angles (np.ndarray): Array of true angles with shape (n_monte_carlo, n_sources) or (n_sources,).
         algorithm_name (Union[str, None], optional): 
-            - 单个算法：算法名称，用于标题和图例。
-            - 多算法比较：None，忽略此参数。
-            默认值为None。
-        metric_name (str, optional): 误差指标名称，用于x轴标签。默认值为'Error'。
-        metric_unit (str, optional): 误差单位，用于x轴标签。默认值为'rad'。
-        metric_type (str, optional): 误差类型，可选值：
-            - 'absolute': 绝对误差
-            - 'rms': 均方根误差
-            - 'mae': 平均绝对误差
-            默认值为'absolute'。
-        ax (Optional[plt.Axes], optional): 外部提供的matplotlib轴对象。如果为None，将创建新图。
-            默认值为None。
+            - Single algorithm: Algorithm name, used for the title and legend.
+            - Multi-algorithm comparison: None, this parameter is ignored.
+            Default value is None.
+        metric_name (str, optional): Error metric name, used for the x-axis label. Default value is 'Error'.
+        metric_unit (str, optional): Error unit, used for the x-axis label. Default value is 'rad'.
+        metric_type (str, optional): Error type, with options:
+            - 'absolute': Absolute error
+            - 'rms': Root Mean Square error
+            - 'mae': Mean Absolute Error
+            Default value is 'absolute'.
+        ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.
+            Default value is None.
     """
-    # 创建或使用提供的轴
+    # Create or use the provided axes
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 6))
         show_plot = True
     else:
         show_plot = False
     
-    # 确保true_angles形状正确
+    # Ensure true_angles has the correct shape
     if true_angles.ndim == 1:
-        # 单个算法情况
+        # Single algorithm case
         if isinstance(estimates, np.ndarray):
             true_angles_repeated = np.tile(true_angles, (estimates.shape[0], 1))
-        # 多算法情况，获取第一个算法的形状
+        # Multi-algorithm case, get shape from first algorithm
         else:
             first_alg = next(iter(estimates.keys()))
             true_angles_repeated = np.tile(true_angles, (estimates[first_alg].shape[0], 1))
     else:
         true_angles_repeated = true_angles
     
-    # 处理单个算法情况
+    # Handle single algorithm case
     if isinstance(estimates, np.ndarray):
         if algorithm_name is None:
             algorithm_name = 'Algorithm'
         
-        # 计算误差
+        # Calculate errors
         if metric_type == 'absolute':
             errors = np.abs(estimates - true_angles_repeated)
         elif metric_type == 'rms':
             errors = np.sqrt(np.mean(np.square(estimates - true_angles_repeated), axis=1))
-            errors = errors[:, np.newaxis]  # 转为(n_monte_carlo, 1)
+            errors = errors[:, np.newaxis]  # Convert to (n_monte_carlo, 1)
         elif metric_type == 'mae':
             errors = np.mean(np.abs(estimates - true_angles_repeated), axis=1)
-            errors = errors[:, np.newaxis]  # 转为(n_monte_carlo, 1)
+            errors = errors[:, np.newaxis]  # Convert to (n_monte_carlo, 1)
         else:
             raise ValueError(f"Unknown metric_type: {metric_type}")
         
-        # 转换为度（如果需要）
+        # Convert to degrees if needed
         if metric_unit == 'deg':
             if metric_type in ['rms', 'mae']:
                 errors = np.rad2deg(errors)
@@ -287,33 +288,33 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
         
         n_sources = errors.shape[1]
         
-        # 绘制每个信源的CDF
+        # Plot CDF for each source
         for i in range(n_sources):
-            # 获取对应的颜色和标记
+            # Get corresponding color and marker
             color, _ = get_doa_method_style(algorithm_name, i)
-            # 提取第i个信源的误差
+            # Extract errors for the i-th source
             source_errors = errors[:, i]
-            # 排序误差
+            # Sort errors
             sorted_errors = np.sort(source_errors)
-            # 计算CDF值
+            # Calculate CDF values
             cdf = np.arange(1, len(sorted_errors) + 1) / len(sorted_errors)
-            # 绘制CDF
+            # Plot CDF
             ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
                     label=f'{algorithm_name} - Source {i+1}')
-    # 处理多算法比较情况
+    # Handle multi-algorithm comparison case
     elif isinstance(estimates, dict):
-        # 遍历每个算法
+        # Iterate through each algorithm
         for i, (alg_name, alg_estimates) in enumerate(estimates.items()):
-            # 确保真实角度形状与当前算法估计值一致
+            # Ensure true angles have the same shape as current algorithm's estimates
             if true_angles.ndim == 1:
                 current_true_angles = np.tile(true_angles, (alg_estimates.shape[0], 1))
             else:
                 current_true_angles = true_angles
             
-            # 计算误差
+            # Calculate errors
             if metric_type == 'absolute':
                 errors = np.abs(alg_estimates - current_true_angles)
-                # 对每个信源单独处理
+                # Handle each source individually
                 n_sources = errors.shape[1]
                 for j in range(n_sources):
                     source_errors = errors[:, j]
@@ -323,25 +324,25 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                     ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
                             label=f'{alg_name} - Source {j+1}')
             elif metric_type in ['rms', 'mae']:
-                # 计算每个蒙特卡洛样本的整体指标
+                # Calculate overall metric for each Monte Carlo sample
                 if metric_type == 'rms':
-                    # 每个样本的RMS（所有信源的均方根）
+                    # RMS for each sample (root mean square of all sources)
                     sample_errors = np.sqrt(np.mean(np.square(alg_estimates - current_true_angles), axis=1))
                 else:  # mae
-                    # 每个样本的MAE（所有信源的平均绝对误差）
+                    # MAE for each sample (mean absolute error of all sources)
                     sample_errors = np.mean(np.abs(alg_estimates - current_true_angles), axis=1)
                 
-                # 转换为度（如果需要）
+                # Convert to degrees if needed
                 if metric_unit == 'deg':
                     sample_errors = np.rad2deg(sample_errors)
                 
-                # 排序误差
+                # Sort errors
                 sorted_errors = np.sort(sample_errors)
-                # 计算CDF值
+                # Calculate CDF values
                 cdf = np.arange(1, len(sorted_errors) + 1) / len(sorted_errors)
-                # 获取对应的颜色和标记
+                # Get corresponding color and marker
                 color, marker = get_doa_method_style(alg_name, i)
-                # 绘制CDF
+                # Plot CDF
                 ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
                         label=alg_name)
             else:
