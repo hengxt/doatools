@@ -1,6 +1,6 @@
-import numpy as np
+from typing import Dict, Optional, Union
 import matplotlib.pyplot as plt
-from typing import Dict, List, Tuple, Optional, Union
+import numpy as np
 
 # Global configuration that allows user customization
 _GLOBAL_CONFIG = {
