@@ -6,6 +6,7 @@ from .sparse import SparseCovarianceMatching, GroupSparseEstimator
 from .ml import AMLEstimator, CMLEstimator, WSFEstimator
 from .grid import FarField1DSearchGrid, FarField2DSearchGrid, NearField2DSearchGrid
 from .coarray import CoarrayACMBuilder1D
+from .coarray_reconstruction import CovarianceReconstructionBase, SPAEstimator, ANMEstimator
 from .preprocessing import spatial_smooth, l1_svd
 from .source_number import aic, mdl, sorte
 from .interferometer import Interferometer1D
