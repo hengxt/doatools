@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Mean-squared errors &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Cramér-Rao bounds" href="doatools.performance.crb.html" />
+    <link rel="prev" title="Performance analysis" href="doatools.performance.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="mean-squared-errors">
+<h1>Mean-squared errors<a class="headerlink" href="#mean-squared-errors" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.performance.mse">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.performance.mse" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="doatools.performance.mse.ecov_music_1d">
+<span class="sig-prename descclassname"><span class="pre">doatools.performance.mse.</span></span><span class="sig-name descname"><span class="pre">ecov_music_1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">P</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_snapshots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perturbations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'full'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/performance/mse.html#ecov_music_1d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.performance.mse.ecov_music_1d" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the asymptotic covariance matrix of the estimation errors of
+the classical MUSIC algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Array design.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+<li><p><strong>sources</strong> (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.FarField1DSourcePlacement" title="doatools.model.sources.FarField1DSourcePlacement"><em>FarField1DSourcePlacement</em></a>) – Source locations.</p></li>
+<li><p><strong>p</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> or </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – <p>The power of the source signals. Can be</p>
+<ol class="arabic simple">
+<li><p>A scalar if all sources are uncorrelated and share the same
+power.</p></li>
+<li><p>A 1D numpy array if all sources are uncorrelated but have
+different powers.</p></li>
+<li><p>A 2D numpy array representing the source covariance matrix.</p></li>
+</ol>
+</p></li>
+<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Variance of the additive noise.</p></li>
+<li><p><strong>n_snapshots</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of snapshots. Default value is 1.</p></li>
+<li><p><strong>perturbations</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Specifies which perturbations are considered when
+constructing the steering matrix. Possible values include <code class="docutils literal notranslate"><span class="pre">'all'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'known'</span></code>, and <code class="docutils literal notranslate"><span class="pre">'none'</span></code>. Default value is <code class="docutils literal notranslate"><span class="pre">'all'</span></code>.
+See <a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign.steering_matrix" title="doatools.model.arrays.ArrayDesign.steering_matrix"><code class="xref py py-meth docutils literal notranslate"><span class="pre">steering_matrix()</span></code></a>
+for more details.</p></li>
+<li><p><strong>return_mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – <p>Can be one of the following:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'full'</span></code>: returns the full covariance matrix.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'diag'</span></code>: returns only the diagonals of the covariance matrix.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'mean_diag'</span></code>: returns the mean of the diagonals of the
+covariance matrix.</p></li>
+</ol>
+<p>Default value is <code class="docutils literal notranslate"><span class="pre">'full'</span></code>.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Depending on <code class="docutils literal notranslate"><span class="pre">'return_mode'</span></code>, can be the full covariance matrix, the
+diagonals of the covariance matrix, or the mean of the diagonals of the
+covariance matrix.</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] P. Stoica and A. Nehorai, “MUSIC, maximum likelihood, and Cramér-Rao
+bound: further results and comparisons,” IEEE Transactions on Acoustics,
+Speech and Signal Processing, vol. 38, no. 12, pp. 2140-2150, Dec. 1990.</p>
+<p>[2] P. Stoica and A. Nehorai, “MUSIC, maximum likelihood, and Cramér-Rao
+bound,” IEEE Transactions on Acoustics, Speech and Signal Processing,
+vol. 37, no. 5, pp. 720-741, May 1989.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="doatools.performance.mse.ecov_coarray_music_1d">
+<span class="sig-prename descclassname"><span class="pre">doatools.performance.mse.</span></span><span class="sig-name descname"><span class="pre">ecov_coarray_music_1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_snapshots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'full'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/performance/mse.html#ecov_coarray_music_1d"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.performance.mse.ecov_coarray_music_1d" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the asymptotic covariance matrix of the estimation errors of the
+coarray-based MUSIC algorithm, SS-MUSIC or DA-MUSIC.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Array design.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+<li><p><strong>sources</strong> (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.FarField1DSourcePlacement" title="doatools.model.sources.FarField1DSourcePlacement"><em>FarField1DSourcePlacement</em></a>) – Source locations.</p></li>
+<li><p><strong>p</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> or </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – <p>The power of the source signals. Can be</p>
+<ol class="arabic simple">
+<li><p>A scalar if all sources are uncorrelated and share the same
+power.</p></li>
+<li><p>A 1D numpy array if all sources are uncorrelated but have
+different powers.</p></li>
+<li><p>A 2D numpy array representing the source covariance matrix.
+Only the diagonal elements will be used.</p></li>
+</ol>
+</p></li>
+<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Variance of the additive noise.</p></li>
+<li><p><strong>n_snapshots</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of snapshots. Default value is 1.</p></li>
+<li><p><strong>return_mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – <p>Can be one of the following:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'full'</span></code>: returns the full covariance matrix.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'diag'</span></code>: returns only the diagonals of the covariance matrix.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'mean_diag'</span></code>: returns the mean of the diagonals of the
+covariance matrix.</p></li>
+</ol>
+<p>Default value is <code class="docutils literal notranslate"><span class="pre">'full'</span></code>.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Depending on <code class="docutils literal notranslate"><span class="pre">'return_mode'</span></code>, can be the full covariance matrix, the
+diagonals of the covariance matrix, or the mean of the diagonals of the
+covariance matrix.</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] M. Wang and A. Nehorai, “Coarrays, MUSIC, and the Cramér-Rao Bound,”
+IEEE Transactions on Signal Processing, vol. 65, no. 4, pp. 933-946,
+Feb. 2017.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="doatools.model.html">Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.performance.html">Performance analysis</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Mean-squared errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.performance.crb.html">Cramér-Rao bounds</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.performance.html">Performance analysis</a><ul>
+      <li>Previous: <a href="doatools.performance.html" title="previous chapter">Performance analysis</a></li>
+      <li>Next: <a href="doatools.performance.crb.html" title="next chapter">Cramér-Rao bounds</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.performance.mse.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

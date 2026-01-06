@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Collecting snapshots &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Difference coarrays" href="doatools.model.coarray.html" />
+    <link rel="prev" title="Modeling source signals" href="doatools.model.signals.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="collecting-snapshots">
+<h1>Collecting snapshots<a class="headerlink" href="#collecting-snapshots" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.model.snapshots">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.model.snapshots" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="doatools.model.snapshots.get_narrowband_snapshots">
+<span class="sig-prename descclassname"><span class="pre">doatools.model.snapshots.</span></span><span class="sig-name descname"><span class="pre">get_narrowband_snapshots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_signal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_snapshots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_covariance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/snapshots.html#get_narrowband_snapshots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.snapshots.get_narrowband_snapshots" title="Link to this definition">¶</a></dt>
+<dd><p>Generates snapshots based on the narrowband snapshot model (see
+Chapter 8.1 of [1]).</p>
+<p>Let <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> be the steering matrix, <span class="math notranslate nohighlight">\(\mathbf{s}(t)\)</span> be the
+source signal vector, and <span class="math notranslate nohighlight">\(\mathbf{n}(t)\)</span> be the noise signal matrix.
+Then the snapshots received at the array is given by</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{y}(t) = \mathbf{A}\mathbf{s}(t) + \mathbf{n}(t),
+t = 1, 2, ..., N,\]</div>
+<p>where <span class="math notranslate nohighlight">\(N\)</span> denotes the number of snapshots.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – The array receiving the
+snapshots.</p></li>
+<li><p><strong>sources</strong> (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><em>SourcePlacement</em></a>) – Source placement.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+<li><p><strong>source_signal</strong> (<a class="reference internal" href="doatools.model.signals.html#doatools.model.signals.SignalGenerator" title="doatools.model.signals.SignalGenerator"><em>SignalGenerator</em></a>) – Source signal generator.</p></li>
+<li><p><strong>noise_signal</strong> (<a class="reference internal" href="doatools.model.signals.html#doatools.model.signals.SignalGenerator" title="doatools.model.signals.SignalGenerator"><em>SignalGenerator</em></a>) – Noise signal generator. Default value is <code class="docutils literal notranslate"><span class="pre">None</span></code>, meaning no
+additive noise.</p></li>
+<li><p><strong>n_snapshots</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of snapshots. Default value is 1.</p></li>
+<li><p><strong>return_covariance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, also returns the sample
+covariance matrix. Default value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>Depending on <code class="docutils literal notranslate"><span class="pre">return_covariance</span></code>.</p>
+<ul>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">return_covariance</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, returns the snapshots matrix,
+<span class="math notranslate nohighlight">\(\mathbf{Y}\)</span>, where each column represents a snapshot.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">return_covariance</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, also returns sample covariance
+matrix, which is computed by</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{R} = \frac{1}{N} \mathbf{Y} \mathbf{Y}^H.\]</div>
+</li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] H. L. Van Trees, Optimum array processing. New York: Wiley, 2002.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.model.html">Modeling</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.arrays.html">Modeling arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.array_elements.html">Modeling array elements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.perturbations.html">Modeling array perturbations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.sources.html">Modeling source placements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.signals.html">Modeling source signals</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Collecting snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.coarray.html">Difference coarrays</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.model.html">Modeling</a><ul>
+      <li>Previous: <a href="doatools.model.signals.html" title="previous chapter">Modeling source signals</a></li>
+      <li>Next: <a href="doatools.model.coarray.html" title="next chapter">Difference coarrays</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.model.snapshots.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

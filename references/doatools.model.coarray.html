@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Difference coarrays &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Estimation" href="doatools.estimation.html" />
+    <link rel="prev" title="Collecting snapshots" href="doatools.model.snapshots.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="difference-coarrays">
+<h1>Difference coarrays<a class="headerlink" href="#difference-coarrays" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.model.coarray">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.model.coarray" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="doatools.model.coarray.compute_location_differences">
+<span class="sig-prename descclassname"><span class="pre">doatools.model.coarray.</span></span><span class="sig-name descname"><span class="pre">compute_location_differences</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">locations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#compute_location_differences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.compute_location_differences" title="Link to this definition">¶</a></dt>
+<dd><p>Computes all locations differences, including duplicates.</p>
+<p>Suppose <code class="docutils literal notranslate"><span class="pre">locations</span></code> is <span class="math notranslate nohighlight">\(m \times d\)</span>, then the result will be an
+<span class="math notranslate nohighlight">\(m^2 \times d\)</span> matrix such that <code class="docutils literal notranslate"><span class="pre">locations[i]</span> <span class="pre">-</span> <span class="pre">locations[j]</span></code> is
+stored in the <code class="docutils literal notranslate"><span class="pre">(i</span> <span class="pre">+</span> <span class="pre">j</span> <span class="pre">*</span> <span class="pre">m)</span></code>-th row of the resulting matrix.</p>
+<p>For instance, if <code class="docutils literal notranslate"><span class="pre">locations</span></code> is <code class="docutils literal notranslate"><span class="pre">[[0,</span> <span class="pre">1],</span> <span class="pre">[1,</span> <span class="pre">3]]</span></code>, then the output will
+be <code class="docutils literal notranslate"><span class="pre">[[0,</span> <span class="pre">0],</span> <span class="pre">[1,</span> <span class="pre">2],</span> <span class="pre">[-1,</span> <span class="pre">-2],</span> <span class="pre">[0,</span> <span class="pre">0]]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>locations</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – An m x d array of sensor locations.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="doatools.model.coarray.compute_unique_location_differences">
+<span class="sig-prename descclassname"><span class="pre">doatools.model.coarray.</span></span><span class="sig-name descname"><span class="pre">compute_unique_location_differences</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">locations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#compute_unique_location_differences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.compute_unique_location_differences" title="Link to this definition">¶</a></dt>
+<dd><p>Computes all unique locations differences.</p>
+<p>Unlike <a class="reference internal" href="#doatools.model.coarray.compute_location_differences" title="doatools.model.coarray.compute_location_differences"><code class="xref py py-meth docutils literal notranslate"><span class="pre">compute_location_differences()</span></code></a>, duplicates within the
+specified tolerance are removed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>locations</strong> – An m x d array of sensor locations.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.model.coarray.</span></span><span class="sig-name descname"><span class="pre">WeightFunction1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Creates a 1D weight function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Array design.</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] P. Pal and P. P. Vaidyanathan, “Nested arrays: A novel approach to
+array processing with enhanced degrees of freedom,” IEEE Transactions on
+Signal Processing, vol. 58, no. 8, pp. 4167-4181, Aug. 2010.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diff</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.__call__" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluates the weight function at the given difference.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.differences">
+<span class="sig-name descname"><span class="pre">differences</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.differences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.differences" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves a 1D array of unique differences in ascending order.</p>
+<p>The ordering of elements returned by <a class="reference internal" href="#doatools.model.coarray.WeightFunction1D.differences" title="doatools.model.coarray.WeightFunction1D.differences"><code class="xref py py-meth docutils literal notranslate"><span class="pre">differences()</span></code></a> and the
+ordering of elements returned by <a class="reference internal" href="#doatools.model.coarray.WeightFunction1D.weights" title="doatools.model.coarray.WeightFunction1D.weights"><code class="xref py py-meth docutils literal notranslate"><span class="pre">weights()</span></code></a> are the same.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.weights" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves a 1D array of weights.</p>
+<p>The ordering of elements returned by <a class="reference internal" href="#doatools.model.coarray.WeightFunction1D.differences" title="doatools.model.coarray.WeightFunction1D.differences"><code class="xref py py-meth docutils literal notranslate"><span class="pre">differences()</span></code></a> and the
+ordering of elements returned by <a class="reference internal" href="#doatools.model.coarray.WeightFunction1D.weights" title="doatools.model.coarray.WeightFunction1D.weights"><code class="xref py py-meth docutils literal notranslate"><span class="pre">weights()</span></code></a> are the same.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.weight_of">
+<span class="sig-name descname"><span class="pre">weight_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diff</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.weight_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.weight_of" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluates the weight function at the given difference.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.indices_of">
+<span class="sig-name descname"><span class="pre">indices_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diff</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.indices_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.indices_of" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves the list of indices of elements in the vectorized
+difference matrix that correspond to the given difference. If the given
+difference does not exist, an empty list will be returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>diff</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Difference.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.get_central_ula_size">
+<span class="sig-name descname"><span class="pre">get_central_ula_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exclude_negative_part</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.get_central_ula_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.get_central_ula_size" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the size of the central ULA in the difference coarray.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exclude_negative_part</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – <p>Set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to exclude the
+virtual array elements corresponding to negative differences.
+The central ULA part is symmetric with respect to the origin and
+can be represented with</p>
+<div class="math notranslate nohighlight">
+\[\lbrack
+-M_\mathrm{v}+1, \ldots, -1, 0, 1, \ldots, M_\mathrm{v}
+\rbrack d_0\]</div>
+<p>After excluding the negative part, the remaining array elements
+are given by</p>
+<div class="math notranslate nohighlight">
+\[\lbrack
+0, 1, \ldots, M_\mathrm{v}
+\rbrack d_0\]</div>
+<p>Default value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.get_max_aperture_size">
+<span class="sig-name descname"><span class="pre">get_max_aperture_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exclude_negative_part</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.get_max_aperture_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.get_max_aperture_size" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the size of the coarray based on the maximum aperture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exclude_negative_part</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to exclude the
+virtual array elements corresponding to negative differences.
+Default value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.coarray.WeightFunction1D.get_coarray_selection_matrix">
+<span class="sig-name descname"><span class="pre">get_coarray_selection_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exclude_negative_part</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/coarray.html#WeightFunction1D.get_coarray_selection_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.coarray.WeightFunction1D.get_coarray_selection_matrix" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the coarray selection matrix.</p>
+<p>Let the central ULA size be <span class="math notranslate nohighlight">\(2M_{\mathrm{v}} - 1\)</span> and the original
+array size be <span class="math notranslate nohighlight">\(M\)</span>. <span class="math notranslate nohighlight">\(\mathbf{F}\)</span> is defined as an
+<span class="math notranslate nohighlight">\((2M_\mathrm{v} - 1) \times M^2\)</span> matrix that transforms the
+vectorized sample covariance matrix, <span class="math notranslate nohighlight">\(\mathrm{vec}(\mathbf{R})\)</span>,
+to the virtual observation vector of the central ULA,
+<span class="math notranslate nohighlight">\(\mathbf{z}\)</span>, via redundancy averaging:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{z} = \mathbf{F} \mathrm{vec}(\mathbf{R}).\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exclude_negative_part</strong> – If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, only the nonnegative part
+of the central ULA (i.e.,
+<span class="math notranslate nohighlight">\(\lbrack 0, 1, \ldots, M_\mathrm{v} - 1\rbrack\)</span>) will be
+considered, and the resulting <span class="math notranslate nohighlight">\(\mathbf{F}\)</span> will be
+<span class="math notranslate nohighlight">\(M_\mathrm{v} \times M^2\)</span>. Default value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The coarray selection matrix.</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] M. Wang and A. Nehorai, “Coarrays, MUSIC, and the Cramér-Rao
+Bound,” IEEE Transactions on Signal Processing, vol. 65, no. 4,
+pp. 933-946, Feb. 2017.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.model.html">Modeling</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.arrays.html">Modeling arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.array_elements.html">Modeling array elements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.perturbations.html">Modeling array perturbations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.sources.html">Modeling source placements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.signals.html">Modeling source signals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.snapshots.html">Collecting snapshots</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Difference coarrays</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.model.html">Modeling</a><ul>
+      <li>Previous: <a href="doatools.model.snapshots.html" title="previous chapter">Collecting snapshots</a></li>
+      <li>Next: <a href="doatools.estimation.html" title="next chapter">Estimation</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.model.coarray.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

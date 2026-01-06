@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Maximum-likelihood based estimators &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Augmented covariance matrices for difference coarrays" href="doatools.estimation.coarray.html" />
+    <link rel="prev" title="Sparsity-based estimators" href="doatools.estimation.sparse.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="maximum-likelihood-based-estimators">
+<h1>Maximum-likelihood based estimators<a class="headerlink" href="#maximum-likelihood-based-estimators" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.estimation.ml">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.estimation.ml" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.ml.CovarianceBasedMLEstimator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.ml.</span></span><span class="sig-name descname"><span class="pre">CovarianceBasedMLEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#CovarianceBasedMLEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.CovarianceBasedMLEstimator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
+<p>Abstract base class for covariance based maximum-likelihood estimators.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Sensor array design.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.ml.CovarianceBasedMLEstimator.get_last_estimates">
+<span class="sig-name descname"><span class="pre">get_last_estimates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#CovarianceBasedMLEstimator.get_last_estimates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.CovarianceBasedMLEstimator.get_last_estimates" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves the last estimates of source locations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.ml.CovarianceBasedMLEstimator.get_max_resolvable_sources">
+<span class="sig-name descname"><span class="pre">get_max_resolvable_sources</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#CovarianceBasedMLEstimator.get_max_resolvable_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.CovarianceBasedMLEstimator.get_max_resolvable_sources" title="Link to this definition">¶</a></dt>
+<dd><p>Returns the maximum number of sources resolvable.</p>
+<p>This default implementation returns (array size - 1), which is suitable
+for most ML based estimators because the projection matrix of the
+steering matrix is not well-defined when the number of sources is
+greater than or equal to the number of sensors.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.ml.CovarianceBasedMLEstimator.estimate">
+<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#CovarianceBasedMLEstimator.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.CovarianceBasedMLEstimator.estimate" title="Link to this definition">¶</a></dt>
+<dd><p>Solves the ML problem for the given inputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>R</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – The sample covariance matrix.</p></li>
+<li><p><strong>sources0</strong> (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><em>SourcePlacement</em></a>) – <p>The initial
+guess of source locations. Its type determines the source type
+and its size determines the number of sources.</p>
+<p>Because the log-likelihood function is highly non-convex, the
+initial guess of source locations will greatly affect the final
+estimates. It is recommended to use the output of another
+estimator (e.g. conventional beamformer) as the initial guess.</p>
+</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments for the solver.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>In general, ML estimates are computationally expensive to obtain
+and sensitive to initialization. They are generally used in
+theoretical performance analyses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><p>A tuple containing the following elements:</p>
+<ul class="simple">
+<li><p>resolved (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>): <code class="docutils literal notranslate"><span class="pre">True</span></code> if the optimizer exited
+successfully. This flag does <strong>not</strong> guarantee that the estimated
+source locations are correct. The estimated source locations may
+be completely wrong!
+If resolved is False, <code class="docutils literal notranslate"><span class="pre">estimates</span></code> will be <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p>estimates (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a>):
+A <a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a> instance of the
+same type as that of <code class="docutils literal notranslate"><span class="pre">sources0</span></code>, represeting the estimated
+source locations. Will be <code class="docutils literal notranslate"><span class="pre">None</span></code> if resolved is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.ml.AMLEstimator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.ml.</span></span><span class="sig-name descname"><span class="pre">AMLEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#AMLEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.AMLEstimator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#doatools.estimation.ml.CovarianceBasedMLEstimator" title="doatools.estimation.ml.CovarianceBasedMLEstimator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CovarianceBasedMLEstimator</span></code></a></p>
+<p>Asymptotic maximum-likelihood (AML) estimator.</p>
+<p>The AML estimator maximizes the following log-likelihood function:</p>
+<div class="math notranslate nohighlight">
+\[- \log\det \mathbf{S} - \mathrm{tr}(\mathbf{S}^{-1} \mathbf{R})\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{S} = \mathbf{A}\mathbf{P}\mathbf{A}^H + \sigma^2\mathbf{I}\)</span>,
+<span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is the steering matrix, <span class="math notranslate nohighlight">\(\mathbf{P}\)</span> is the source
+covariance matrix, <span class="math notranslate nohighlight">\(\sigma^2\)</span> is the noise variance, and
+<span class="math notranslate nohighlight">\(\hat{\mathbf{R}}\)</span> is the sample covariance matrix.</p>
+<p>Here the unknown parameters include the source locations,
+<span class="math notranslate nohighlight">\(\mathbf{P}\)</span>, and <span class="math notranslate nohighlight">\(\sigma^2\)</span>. The MLE of <span class="math notranslate nohighlight">\(\mathbf{P}\)</span> and
+<span class="math notranslate nohighlight">\(\sigma^2\)</span> can be analytically obtained in terms of the source
+locations. The final optimization problem only involves the source
+locations, <span class="math notranslate nohighlight">\(\mathbf{\theta}\)</span>, as unknown variables:</p>
+<div class="math notranslate nohighlight">
+\[\min_{\mathbf{\theta}} \log\det\left\lbrack
+\mathbf{P}_{\mathbf{A}} \hat{\mathbf{R}} \mathbf{P}_{\mathbf{A}}
++ \frac{
+    \mathrm{tr}(\mathbf{P}^\perp_{\mathbf{A}} \hat{\mathbf{R}})
+    \mathbf{P}^\perp_{\mathbf{A}}
+}{N-D}
+\right\rbrack.\]</div>
+<p class="rubric">References</p>
+<p>[1] H. L. Van Trees, Optimum array processing. New York: Wiley, 2002.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.ml.CMLEstimator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.ml.</span></span><span class="sig-name descname"><span class="pre">CMLEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#CMLEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.CMLEstimator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#doatools.estimation.ml.CovarianceBasedMLEstimator" title="doatools.estimation.ml.CovarianceBasedMLEstimator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CovarianceBasedMLEstimator</span></code></a></p>
+<p>Conditional maximum-likelihood (CML) estimator.</p>
+<p>Given the conditional observation model (the source signals are assumed to
+be deterministic unknown):</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{y}(t) = \mathbf{A}(\mathbf{\theta})\mathbf{x}(t) + \mathbf{n}(t),
+t = 1,2,...,T,\]</div>
+<p>the CML estimator maximizes the following log-likelihood function:</p>
+<div class="math notranslate nohighlight">
+\[- TM\log\sigma^2
+- \sigma^{-2} \sum_{t=1}^T
+  \| \mathbf{y}(t) - \mathbf{A}\mathbf{x}(t) \|^2,\]</div>
+<p>where <span class="math notranslate nohighlight">\(M\)</span> is the number of sensors, <span class="math notranslate nohighlight">\(T\)</span> is the number of
+snapshots, <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is the steering matrix, <span class="math notranslate nohighlight">\(\sigma^2\)</span> is
+the noise variance.</p>
+<p>Here the unknown parameters include the source locations,
+<span class="math notranslate nohighlight">\(\mathbf{\theta}\)</span>, as well as <span class="math notranslate nohighlight">\(\mathbf{x}(t)\)</span> and
+<span class="math notranslate nohighlight">\(\sigma^2\)</span>. With further computations, it can be shown that the final
+optimization problem only involves the source locations:</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{tr}(\mathbf{P}^\perp_{\mathbf{A}} \hat{\mathbf{R}}),\]</div>
+<p>where
+<span class="math notranslate nohighlight">\(\hat{\mathbf{R}} = 1/T \sum_{t=1}^T \mathbf{x}(t)\mathbf{x}^H(t)\)</span>.</p>
+<p class="rubric">References</p>
+<p>[1] H. L. Van Trees, Optimum array processing. New York: Wiley, 2002.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.ml.WSFEstimator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.ml.</span></span><span class="sig-name descname"><span class="pre">WSFEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/ml.html#WSFEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.ml.WSFEstimator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#doatools.estimation.ml.CovarianceBasedMLEstimator" title="doatools.estimation.ml.CovarianceBasedMLEstimator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CovarianceBasedMLEstimator</span></code></a></p>
+<p>Weighted subspace fitting (WSF) estimator.</p>
+<p>WSF is based on the CML estimator, with the objective function given by</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{tr}(\mathbf{P}^\perp_{\mathbf{A}}
+    \hat{\mathbf{U}}_\mathrm{s}
+    \hat{\mathbf{W}}
+    \hat{\mathbf{U}}_\mathrm{s}^H),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{\mathbf{U}}_\mathrm{s}\)</span> consists of the eigenvectors of
+the signal subspace of <span class="math notranslate nohighlight">\(\hat{\mathbf{R}}\)</span>, and
+<span class="math notranslate nohighlight">\(\hat{\mathbf{W}}\)</span> is a diagonal matrix consists of asymptotically
+optimal weights.</p>
+<p class="rubric">References</p>
+<p>[1] M. Viberg and B. Ottersten, “Sensor array processing based on
+subspace fitting,” IEEE Transactions on Signal Processing, vol. 39,
+no. 5, pp. 1110-1121, May 1991.</p>
+<p>[2] H. L. Van Trees, Optimum array processing. New York: Wiley, 2002.</p>
+<p>[3] P. Stoica and K. Sharman, “Maximum likelihood methods for
+direction-of-arrival estimation,” IEEE Trans. Acoust., Speech, Signal
+Process., vol. 38, pp. 1132-1143, July 1990.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="doatools.model.html">Modeling</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.estimation.html">Estimation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.grid.html">Creating search grids</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.preprocessing.html">Data preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.source_number.html">Source number detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.beamforming.html">Beamforming based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.music.html">MUSIC-based Estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.min_norm.html">Min-Norm based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.esprit.html">ESPRIT based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.sparse.html">Sparsity-based estimators</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Maximum-likelihood based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.coarray.html">Augmented covariance matrices for difference coarrays</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.estimation.html">Estimation</a><ul>
+      <li>Previous: <a href="doatools.estimation.sparse.html" title="previous chapter">Sparsity-based estimators</a></li>
+      <li>Next: <a href="doatools.estimation.coarray.html" title="next chapter">Augmented covariance matrices for difference coarrays</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.estimation.ml.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
