@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Modeling source signals &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Collecting snapshots" href="doatools.model.snapshots.html" />
+    <link rel="prev" title="Modeling source placements" href="doatools.model.sources.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="modeling-source-signals">
+<h1>Modeling source signals<a class="headerlink" href="#modeling-source-signals" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.model.signals">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.model.signals" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.model.signals.SignalGenerator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.model.signals.</span></span><span class="sig-name descname"><span class="pre">SignalGenerator</span></span><a class="reference internal" href="../_modules/doatools/model/signals.html#SignalGenerator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.signals.SignalGenerator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
+<p>Abstrace base class for all signal generators.</p>
+<p>Extend this class to create your own signal generators.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="doatools.model.signals.SignalGenerator.dim">
+<em class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dim</span></span><a class="headerlink" href="#doatools.model.signals.SignalGenerator.dim" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves the dimension of the signal generator.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.signals.SignalGenerator.emit">
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">emit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/signals.html#SignalGenerator.emit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.signals.SignalGenerator.emit" title="Link to this definition">¶</a></dt>
+<dd><p>Emits the signal matrix.</p>
+<p>Generates a k x n matrix where k is the dimension of the signal and
+each column represents a sample.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.model.signals.ComplexStochasticSignal">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.model.signals.</span></span><span class="sig-name descname"><span class="pre">ComplexStochasticSignal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">C</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/signals.html#ComplexStochasticSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.signals.ComplexStochasticSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#doatools.model.signals.SignalGenerator" title="doatools.model.signals.SignalGenerator"><code class="xref py py-class docutils literal notranslate"><span class="pre">SignalGenerator</span></code></a></p>
+<p>Creates a signal generator that generates zero-mean complex
+circularly-symmetric Gaussian signals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dimension of the complex Gaussian distribution. Must match
+the size of <code class="docutils literal notranslate"><span class="pre">C</span></code> if <code class="docutils literal notranslate"><span class="pre">C</span></code> is not a scalar.</p></li>
+<li><p><strong>C</strong> – <p>Covariance matrix of the complex Gaussian distribution.
+Can be specified by</p>
+<ol class="arabic simple">
+<li><p>A full covariance matrix.</p></li>
+<li><p>An real vector denoting the diagonals of the covariance
+matrix if the covariance matrix is diagonal.</p></li>
+<li><p>A scalar if the covariance matrix is diagonal and all
+diagonal elements share the same value. In this case,
+parameter n must be specified.</p></li>
+</ol>
+<p>Default value is <cite>1.0</cite>.</p>
+</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="doatools.model.signals.ComplexStochasticSignal.dim">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dim</span></span><a class="headerlink" href="#doatools.model.signals.ComplexStochasticSignal.dim" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves the dimension of the signal generator.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.signals.ComplexStochasticSignal.emit">
+<span class="sig-name descname"><span class="pre">emit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/signals.html#ComplexStochasticSignal.emit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.signals.ComplexStochasticSignal.emit" title="Link to this definition">¶</a></dt>
+<dd><p>Emits the signal matrix.</p>
+<p>Generates a k x n matrix where k is the dimension of the signal and
+each column represents a sample.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.model.signals.RandomPhaseSignal">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.model.signals.</span></span><span class="sig-name descname"><span class="pre">RandomPhaseSignal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amplitudes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/signals.html#RandomPhaseSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.signals.RandomPhaseSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#doatools.model.signals.SignalGenerator" title="doatools.model.signals.SignalGenerator"><code class="xref py py-class docutils literal notranslate"><span class="pre">SignalGenerator</span></code></a></p>
+<p>Creates a random phase signal generator.</p>
+<p>The phases are uniformly and independently sampled from <span class="math notranslate nohighlight">\([-\pi, \pi]\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dimension of the signal (usually equal to the number of
+sources).</p></li>
+<li><p><strong>amplitudes</strong> – <p>Amplitudes of the signal. Can be specified by</p>
+<ol class="arabic simple">
+<li><p>A scalar if all sources have the same amplitude.</p></li>
+<li><p>A vector if the sources have different amplitudes.</p></li>
+</ol>
+</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="doatools.model.signals.RandomPhaseSignal.dim">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dim</span></span><a class="headerlink" href="#doatools.model.signals.RandomPhaseSignal.dim" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves the dimension of the signal generator.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.model.signals.RandomPhaseSignal.emit">
+<span class="sig-name descname"><span class="pre">emit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/model/signals.html#RandomPhaseSignal.emit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.model.signals.RandomPhaseSignal.emit" title="Link to this definition">¶</a></dt>
+<dd><p>Emits the signal matrix.</p>
+<p>Generates a k x n matrix where k is the dimension of the signal and
+each column represents a sample.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.model.html">Modeling</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.arrays.html">Modeling arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.array_elements.html">Modeling array elements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.perturbations.html">Modeling array perturbations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.sources.html">Modeling source placements</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Modeling source signals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.snapshots.html">Collecting snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.model.coarray.html">Difference coarrays</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.model.html">Modeling</a><ul>
+      <li>Previous: <a href="doatools.model.sources.html" title="previous chapter">Modeling source placements</a></li>
+      <li>Next: <a href="doatools.model.snapshots.html" title="next chapter">Collecting snapshots</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.model.signals.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

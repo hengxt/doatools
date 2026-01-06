@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>doatools.estimation.sparse &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../../../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for doatools.estimation.sparse</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">cvxpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cvx</span>
+    <span class="n">cvx_available</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Cannot import cvxpr. Some sparse recovery based estimators will not be usable.&#39;</span><span class="p">)</span>
+    <span class="n">cvx_available</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpectrumBasedEstimatorBase</span><span class="p">,</span> <span class="n">ensure_covariance_size</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils.math</span><span class="w"> </span><span class="kn">import</span> <span class="n">khatri_rao</span><span class="p">,</span> <span class="n">vec</span>
+
+
+<div class="viewcode-block" id="L1RegularizedLeastSquaresProblem">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.L1RegularizedLeastSquaresProblem">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">L1RegularizedLeastSquaresProblem</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Creates a reusable :math:`l_1`-regularized least squares problem.</span>
+
+<span class="sd">    Let :math:`\mathbf{A}` be an :math:`M \times L` real dictionary matrix,</span>
+<span class="sd">    :math:`\mathbf{b}` be an :math:`M \times 1` observation vector,</span>
+<span class="sd">    :math:`\mathbf{x}` be a :math:`K \times 1` sparse vector, :math:`l` be</span>
+<span class="sd">    a nonnegative scalar. Let :math:`c` equal to 0 if :math:`\mathbf{x}`</span>
+<span class="sd">    must be nonnegative and :math:`-\infty` if :math:`\mathbf{x}` can be any</span>
+<span class="sd">    real number.</span>
+<span class="sd">    </span>
+<span class="sd">    The default formulation, named ``&#39;penalizedl1&#39;``, is given by</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \begin{aligned}</span>
+<span class="sd">        \min_{\mathbf{x}}&amp;</span>
+<span class="sd">        \frac{1}{2} \| \mathbf{A}\mathbf{x} - \mathbf{b} \|_2^2 +</span>
+<span class="sd">            l \| \mathbf{x} \|_1,\\</span>
+<span class="sd">        \text{s.t. }&amp; x \geq c</span>
+<span class="sd">        \end{aligned}</span>
+
+<span class="sd">    This formulation can be efficiently solved with QP or FISTA.</span>
+
+<span class="sd">    One common variant, namely the ``&#39;constraintedl1&#39;`` formulation, is</span>
+<span class="sd">    given by</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \begin{aligned}</span>
+<span class="sd">        \min_{\mathbf{x}}&amp; \| \mathbf{A}\mathbf{x} - \mathbf{b} \|_2^2,\\</span>
+<span class="sd">        \text{s.t. }&amp; \| \mathbf{x} \|_1 \leq l, \mathbf{x} \geq c.</span>
+<span class="sd">        \end{aligned}</span>
+
+<span class="sd">    This formulation can be efficiently solved with QP.</span>
+
+<span class="sd">    A less common variant, namely the ``&#39;constrainedl2&#39;`` formulation, is</span>
+<span class="sd">    given by</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \begin{aligned}</span>
+<span class="sd">        \min_{\mathbf{x}}&amp; \| \mathbf{x} \|_1,\\</span>
+<span class="sd">        \text{s.t. }&amp; \| \mathbf{A}\mathbf{x} - \mathbf{b} \|_2 \leq l,</span>
+<span class="sd">            \mathbf{x} \geq c.</span>
+<span class="sd">        \end{aligned}</span>
+<span class="sd">    </span>
+<span class="sd">    Note that the :math:`l_2` error is upper bounded by l. If l is too small</span>
+<span class="sd">    this problem may be infeasible. This formulation can be converted to a</span>
+<span class="sd">    SOCP problem.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        m (int): Dimension of the observation vector :math:`\mathbf{b}`.</span>
+<span class="sd">        k (int): Dimension of the sparse vector :math:`\mathbf{x}` (or the</span>
+<span class="sd">            number of columns of the dictionary matrix, :math:`\mathbf{A}`).</span>
+<span class="sd">        formulation (str): ``&#39;penalizedl1&#39;``, ``&#39;constrainedl1&#39;`` or</span>
+<span class="sd">            ``&#39;constrainedl2&#39;``. Default value is ``&#39;penalizedl1&#39;``.</span>
+<span class="sd">        nonnegative (bool): Specifies whether :math:`\mathbf{x}` must be</span>
+<span class="sd">            nonnegative. Default value is ``False``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">formulation</span><span class="o">=</span><span class="s1">&#39;penalizedl1&#39;</span><span class="p">,</span> <span class="n">nonnegative</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cvx_available</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Cannot initialize when cvxpy is not available.&#39;</span><span class="p">)</span>
+        <span class="c1"># Initialize parameters and variables</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Parameter</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Parameter</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">nonneg</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Variable</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># Create the problem</span>
+        <span class="k">if</span> <span class="n">formulation</span> <span class="o">==</span> <span class="s1">&#39;penalizedl1&#39;</span><span class="p">:</span>
+            <span class="n">obj_func</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">cvx</span><span class="o">.</span><span class="n">sum_squares</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="n">l</span> <span class="o">*</span> <span class="n">cvx</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">constraints</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">elif</span> <span class="n">formulation</span> <span class="o">==</span> <span class="s1">&#39;constrainedl1&#39;</span><span class="p">:</span>
+            <span class="n">obj_func</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">sum_squares</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span>
+            <span class="n">constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">cvx</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">l</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">formulation</span> <span class="o">==</span> <span class="s1">&#39;constrainedl2&#39;</span><span class="p">:</span>
+            <span class="n">obj_func</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">cvx</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">l</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown formulation &#39;</span><span class="si">{0}</span><span class="s2">&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">formulation</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">nonnegative</span><span class="p">:</span>
+            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">problem</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Problem</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">Minimize</span><span class="p">(</span><span class="n">obj_func</span><span class="p">),</span> <span class="n">constraints</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_formulation</span> <span class="o">=</span> <span class="n">formulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_A</span> <span class="o">=</span> <span class="n">A</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_b</span> <span class="o">=</span> <span class="n">b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_l</span> <span class="o">=</span> <span class="n">l</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_obj_func</span> <span class="o">=</span> <span class="n">obj_func</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_constraints</span> <span class="o">=</span> <span class="n">constraints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span> <span class="o">=</span> <span class="n">problem</span>
+
+<div class="viewcode-block" id="L1RegularizedLeastSquaresProblem.solve">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.L1RegularizedLeastSquaresProblem.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solves the problem with the specified parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            A (~numpy.ndarray): Dictionary matrix.</span>
+<span class="sd">            b (~numpy.ndarray): Observation vector.</span>
+<span class="sd">            l (float): Regularization/constraint parameter.</span>
+<span class="sd">            **kwargs: Other keyword arguments to be passed to the solver.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_A</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">A</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_l</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">l</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s1">&#39;optimal&#39;</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Optimal solution cannot be obtained.&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">size</span><span class="p">,))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">value</span></div>
+</div>
+
+
+<div class="viewcode-block" id="L21RegularizedLeastSquaresProblem">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.L21RegularizedLeastSquaresProblem">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">L21RegularizedLeastSquaresProblem</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Creates an :math:`l_{2,1}`-norm regularized least squares problem.</span>
+<span class="sd">    </span>
+<span class="sd">    The :math:`l_{2,1}`-norm of a matrix variable</span>
+<span class="sd">    :math:`\mathbf{X} \in \mathbb{C}^{K \times L}` is given by</span>
+<span class="sd">    </span>
+<span class="sd">    .. math::</span>
+<span class="sd">        </span>
+<span class="sd">        \| \mathbf{X} \|_{2,1}</span>
+<span class="sd">        = \sum_{i=1}^K \left(\sum_{j=1}^L |X_{ij}|^2\right)^{\frac{1}{2}}.</span>
+<span class="sd">    </span>
+<span class="sd">    The :math:`l_{2,1}`-norm regularized least squares problem is given by</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \min_{\mathbf{X}}</span>
+<span class="sd">        \frac{1}{2} \| \mathbf{A}\mathbf{X} - \mathbf{B} \|_F^2 +</span>
+<span class="sd">        l \| \mathbf{X} \|_{2,1},</span>
+<span class="sd">    </span>
+<span class="sd">    where :math:`\mathbf{A}` is :math:`M \times K`, :math:`\mathbf{X}` is</span>
+<span class="sd">    :math:`K \times L`, :math:`\mathbf{B}` is :math:`M \times L`, and :math:`l`</span>
+<span class="sd">    is the regularization parameter. Usually :math:`\mathbf{A}` is the</span>
+<span class="sd">    dictionary matrix, :math:`\mathbf{X}` is the sparse signal to be</span>
+<span class="sd">    reconstructed, and :math:`\mathbf{B}` is the observation matrix where each</span>
+<span class="sd">    column of :math:`\mathbf{B}` represents a single observation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        m (int): Number of rows of the dictionary matrix :math:`\mathbf{A}`.</span>
+<span class="sd">        k (int): Number of rows of :math:`\mathbf{X}` (or the number of columns</span>
+<span class="sd">            of the dictionary matrix, :math:`\mathbf{A}`).</span>
+<span class="sd">        n (int): Number of observations (the number of columns of the</span>
+<span class="sd">            observation matrix, :math:`\mathbf{B}`)</span>
+<span class="sd">        complex (bool): Specifies whether all matrices are complex. Default</span>
+<span class="sd">            value is ``False``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="nb">complex</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cvx_available</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Cannot initialize when cvxpy is not available.&#39;</span><span class="p">)</span>
+        <span class="c1"># Initialize parameters and variables</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Parameter</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">),</span> <span class="nb">complex</span><span class="o">=</span><span class="nb">complex</span><span class="p">)</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Parameter</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="nb">complex</span><span class="o">=</span><span class="nb">complex</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">nonneg</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Variable</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="nb">complex</span><span class="o">=</span><span class="nb">complex</span><span class="p">)</span>
+        <span class="c1"># Create the problem</span>
+        <span class="c1"># CVXPY issue:</span>
+        <span class="c1">#   cvx.norm does not work if axis is not 0.</span>
+        <span class="c1"># Workaround:</span>
+        <span class="c1">#   use cvx.norm(X.T, 2, axis=0) instead of cvx.norm(X, 2, axis=1)</span>
+        <span class="n">obj_func</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">cvx</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span> <span class="o">-</span> <span class="n">B</span><span class="p">,</span> <span class="s1">&#39;fro&#39;</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> \
+                   <span class="n">l</span> <span class="o">*</span> <span class="n">cvx</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span> <span class="o">=</span> <span class="n">cvx</span><span class="o">.</span><span class="n">Problem</span><span class="p">(</span><span class="n">cvx</span><span class="o">.</span><span class="n">Minimize</span><span class="p">(</span><span class="n">obj_func</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_A</span> <span class="o">=</span> <span class="n">A</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_B</span> <span class="o">=</span> <span class="n">B</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_l</span> <span class="o">=</span> <span class="n">l</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_X</span> <span class="o">=</span> <span class="n">X</span>
+
+<div class="viewcode-block" id="L21RegularizedLeastSquaresProblem.solve">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.L21RegularizedLeastSquaresProblem.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solves the problem with the specified parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            A (~numpy.ndarray): Dictionary matrix.</span>
+<span class="sd">            B (~numpy.ndarray): Observation matrix.</span>
+<span class="sd">            l (~numpy.ndarray): Regularization parameter.</span>
+<span class="sd">            **kwargs: Other keyword arguments to be passed to the solver.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_A</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">A</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_B</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">B</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_l</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">l</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s1">&#39;optimal&#39;</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Optimal solution cannot be obtained.&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_X</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_X</span><span class="o">.</span><span class="n">value</span></div>
+</div>
+
+
+<div class="viewcode-block" id="SparseCovarianceMatching">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.SparseCovarianceMatching">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SparseCovarianceMatching</span><span class="p">(</span><span class="n">SpectrumBasedEstimatorBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Creates a source location estimator based on matching the sparse</span>
+<span class="sd">    representation of the covariance matrix.</span>
+
+<span class="sd">    The sources are assumed to be uncorrelated. Take 1D far-field sources</span>
+<span class="sd">    as an example. After discretizing the range of source locations into a fine</span>
+<span class="sd">    grid of :math:`G` points,</span>
+<span class="sd">    :math:`\mathbf{\theta} = [\theta_1, \ldots, \theta_G]^T`, the vectorized</span>
+<span class="sd">    covariance matrix can be expressed as</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \mathbf{r} = \begin{bmatrix}</span>
+<span class="sd">            \mathbf{A}^*(\mathbf{\theta}) \odot \mathbf{A}(\mathbf{\theta}) &amp;</span>
+<span class="sd">            \mathrm{vec}(\mathbf{I})</span>
+<span class="sd">        \end{bmatrix}</span>
+<span class="sd">        \begin{bmatrix} \mathbf{p} \\ \sigma^2 \end{bmatrix}</span>
+<span class="sd">    </span>
+<span class="sd">    where :math:`\mathbf{A}` is the steering matrix of the discretized source</span>
+<span class="sd">    locations, :math:`\mathbf{p} \in \mathbb{R}_+^G` is a sparse vector of the</span>
+<span class="sd">    source powers, and :math:`\sigma^2` is the noise variance. If all sources</span>
+<span class="sd">    are located on the grid, :math:`p_k` should be non-zero if there is a</span>
+<span class="sd">    source located at :math:`\theta_k` and zero otherwise.</span>
+
+<span class="sd">    Let :math:`\mathbf{\Phi} = \lbrack \mathbf{A}^* \odot \mathbf{A}, \mathrm{vec}(\mathbf{I}) \rbrack`,</span>
+<span class="sd">    and :math:`\mathbf{x} = \lbrack \mathbf{p}^T, \sigma^2 \rbrack^T`. We have</span>
+<span class="sd">    :math:`\mathbf{r} = \mathbf{\Phi} \mathbf{x}`, where :math:`\mathbf{x}` is</span>
+<span class="sd">    sparse. We call this expression the sparse representation of the covariance</span>
+<span class="sd">    matrix. Given the estimate of :math:`\mathbf{r}`, :math:`\hat{\mathbf{r}}`,</span>
+<span class="sd">    we can formulate a sparse recovery problem to recovery the sparse vector</span>
+<span class="sd">    :math:`\mathbf{x}`, and then recover the source locations.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        array (~doatools.model.arrays.ArrayDesign): Array design.</span>
+<span class="sd">        wavelength (float): Wavelength of the carrier wave.</span>
+<span class="sd">        search_grid (~doatools.estimation.grid.SearchGrid): The search grid</span>
+<span class="sd">            used to locate the sources.</span>
+<span class="sd">        formulation (str): ``&#39;penalizedl1&#39;``, ``&#39;constrainedl1&#39;``, or</span>
+<span class="sd">            ``&#39;constrainedl2&#39;``.</span>
+<span class="sd">        **kwargs: Other keyword arguments supported by</span>
+<span class="sd">            :class:`~doatools.estimation.core.SpectrumBasedEstimatorBase`.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] J. Yin and T. Chen, &quot;Direction-of-Arrival Estimation Using a Sparse</span>
+<span class="sd">        Representation of Array Covariance Vectors,&quot; IEEE Transactions on</span>
+<span class="sd">        Signal Processing, vol. 59, no. 9, pp. 4489–4493, Sep. 2011.</span>
+
+<span class="sd">        [2] Y. D. Zhang, M. G. Amin, and B. Himed, &quot;Sparsity-based DOA</span>
+<span class="sd">        estimation using co-prime arrays,&quot; in 2013 IEEE International</span>
+<span class="sd">        Conference on Acoustics, Speech and Signal Processing (ICASSP),</span>
+<span class="sd">        2013, pp. 3967-3971.</span>
+<span class="sd">        </span>
+<span class="sd">        [3] Z. Tan and A. Nehorai, &quot;Sparse direction of arrival estimation using</span>
+<span class="sd">        co-prime arrays with off-grid targets,&quot; IEEE Signal Processing</span>
+<span class="sd">        Letters, vol. 21, no. 1, pp. 26-29, Jan. 2014.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span> <span class="n">search_grid</span><span class="p">,</span> <span class="n">noise_known</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">formulation</span><span class="o">=</span><span class="s1">&#39;penalizedl1&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span> <span class="n">search_grid</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_formulation</span> <span class="o">=</span> <span class="n">formulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_noise_known</span> <span class="o">=</span> <span class="n">noise_known</span>
+        <span class="c1"># vec(R) -&gt; m*m elements, real + image -&gt; 2*m*m</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">size</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_grid</span><span class="o">.</span><span class="n">size</span>
+        <span class="c1"># If noise is not known, we need a additional column for vec(I).</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_noise_known</span><span class="p">:</span>
+            <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># Initialize the problem.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span> <span class="o">=</span> <span class="n">L1RegularizedLeastSquaresProblem</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">formulation</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_atom_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">):</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">steering_matrix</span><span class="p">(</span>
+            <span class="n">grid</span><span class="o">.</span><span class="n">source_placement</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wavelength</span><span class="p">,</span>
+            <span class="n">perturbations</span><span class="o">=</span><span class="s1">&#39;known&#39;</span>
+        <span class="p">)</span>
+        <span class="n">Phi</span> <span class="o">=</span> <span class="n">khatri_rao</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">conj</span><span class="p">(),</span> <span class="n">A</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_noise_known</span><span class="p">:</span>
+            <span class="n">Phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">Phi</span><span class="p">,</span> <span class="n">vec</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">size</span><span class="p">))))</span>
+        <span class="n">Phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">Phi</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">Phi</span><span class="o">.</span><span class="n">imag</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">Phi</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_sparse_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Phi</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">solver_options</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">vec</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">r</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">imag</span><span class="p">))</span>
+        <span class="n">sol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="o">**</span><span class="n">solver_options</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_noise_known</span><span class="p">:</span>
+            <span class="c1"># The last element is the noise variance estimate.</span>
+            <span class="c1"># TODO: output noise estimate?</span>
+            <span class="n">sol</span> <span class="o">=</span> <span class="n">sol</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">sol</span>
+    
+<div class="viewcode-block" id="SparseCovarianceMatching.estimate">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.SparseCovarianceMatching.estimate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">solver_options</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Estimates the source locations from the given covariance matrix.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            R (~numpy.ndarray): Covariance matrix input. The size of R must</span>
+<span class="sd">                match that of the array design used when creating this</span>
+<span class="sd">                estimator.</span>
+<span class="sd">            </span>
+<span class="sd">            k (int): Expected number of sources.</span>
+<span class="sd">            </span>
+<span class="sd">            l (float): The regularization parameter. The meaning of this</span>
+<span class="sd">                parameter depends on the formulation:</span>
+<span class="sd">                </span>
+<span class="sd">                * ``&#39;penalizedl1&#39;``: regularization parameter of the l1 penalty</span>
+<span class="sd">                  term. Larger values of ``l`` usually leads to more sparse</span>
+<span class="sd">                  solutions, at the cost of increased biases.</span>
+<span class="sd">                * ``&#39;constrainedl1&#39;``: upper bound of the l1 norm of the signal</span>
+<span class="sd">                  vector. Smaller values of ``l`` usually leads to more sparse</span>
+<span class="sd">                  solutions, at the cost of increased biases.</span>
+<span class="sd">                * ``&#39;constrainedl2&#39;``: upper bound of the l2 norm of the</span>
+<span class="sd">                  residual. Smaller values of ``l`` usually leads to better</span>
+<span class="sd">                  reconstruction results. However the optimization problem</span>
+<span class="sd">                  will become infeasible if ``l`` is too small.</span>
+<span class="sd">                </span>
+<span class="sd">                See :class:`L1RegularizedLeastSquaresProblem`</span>
+<span class="sd">                for more details.</span>
+<span class="sd">            </span>
+<span class="sd">            solver_options (dict): A dictionary of additional keyword arguments</span>
+<span class="sd">                to be passed to the optimizer. For instance, you can specify the</span>
+<span class="sd">                solver or set the verbosity.</span>
+<span class="sd">            </span>
+<span class="sd">            return_spectrum (bool): Set to ``True`` to also output the spectrum</span>
+<span class="sd">                for visualization. Default value if ``False``.</span>
+<span class="sd">                </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A tuple with the following elements.</span>
+
+<span class="sd">            * resolved (:class:`bool`): ``True`` is the solver successfully</span>
+<span class="sd">              obtained the sparse solution and the peak finder successfully</span>
+<span class="sd">              identified the desired number of peaks. This flag does **not**</span>
+<span class="sd">              guarantee that the estimated source locations are correct. The</span>
+<span class="sd">              estimated source locations may be completely wrong!</span>
+<span class="sd">              If resolved is False, both ``estimates`` and ``spectrum`` will be</span>
+<span class="sd">              ``None``.</span>
+<span class="sd">            * estimates (:class:`~doatools.model.sources.SourcePlacement`):</span>
+<span class="sd">              A :class:`~doatools.model.sources.SourcePlacement` instance of the</span>
+<span class="sd">              same type as the one used in the search grid, represeting the</span>
+<span class="sd">              estimated source locations. Will be ``None`` if resolved is</span>
+<span class="sd">              ``False``.</span>
+<span class="sd">            * spectrum (:class:`~numpy.ndarray`): An numpy array of the same</span>
+<span class="sd">              shape of the specified search grid, consisting of values evaluated</span>
+<span class="sd">              at the grid points. Only present if ``return_spectrum`` is</span>
+<span class="sd">              ``True``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;refine_estimates&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Grid refinement is not supported.&#39;</span><span class="p">)</span>
+        <span class="n">ensure_covariance_size</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_noise_known</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sigma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;sigma must be specified when noise variance is assumed known.&#39;</span><span class="p">)</span>
+            <span class="c1"># Do not modify R in-place!</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">R</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">sigma</span>
+        <span class="n">f_sp</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">Phi</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_sparse_spectrum</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">solver_options</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate</span><span class="p">(</span><span class="n">f_sp</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="GroupSparseEstimator">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.GroupSparseEstimator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GroupSparseEstimator</span><span class="p">(</span><span class="n">SpectrumBasedEstimatorBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Creates a group-sparsity based estimator.</span>
+
+<span class="sd">    The group-sparsity based estimator considers the following mulitple</span>
+<span class="sd">    measurement vector (MMV) model:</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">    </span>
+<span class="sd">        \mathbf{Y} = \mathbf{A} \mathbf{X} + \mathbf{N},</span>
+
+<span class="sd">    where each column of :math:`\mathbf{Y}` represents a single snapshot</span>
+<span class="sd">    vector, each column of :math:`\mathbf{X}` represents a single source signal</span>
+<span class="sd">    vector, each column of :math:`\mathbf{N}` represents a single noise vector.</span>
+
+<span class="sd">    Similar to :class:`SparseCovarianceMatching`, we discretize the range of</span>
+<span class="sd">    source locations into a fine grid, and :math:`\mathbf{A}` is the steering</span>
+<span class="sd">    matrix of the discretized source locations. If we can find out the non-zero</span>
+<span class="sd">    rows of :math:`\mathbf{X}`, we can then recover the source locations.</span>
+
+<span class="sd">    The group-sparsity based estimator solves the following mixed-norm</span>
+<span class="sd">    optimization problem:</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \min_{\mathbf{X}} \frac{1}{2}\| \mathbf{A}\mathbf{X} - \mathbf{Y} \|_2</span>
+<span class="sd">        + \lambda \| \mathbf{X} \|_{2,1},</span>
+
+<span class="sd">    where :math:`\lambda` is the regularization parameter, and</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">    </span>
+<span class="sd">        \| \mathbf{X} \|_{2,1}</span>
+<span class="sd">        =\sum_{i} \left(\sum_{j} |X_{ij}|^2\right)^{\frac{1}{2}}.</span>
+<span class="sd">    </span>
+<span class="sd">    After recovering :math:`\mathbf{X}`, the :math:`l_2` norms of the rows of</span>
+<span class="sd">    :math:`\mathbf{X}` forms a pseudo spectrum. We can then find the source</span>
+<span class="sd">    locations by identifying the largest peaks.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        array (~doatools.model.arrays.ArrayDesign): Array design.</span>
+<span class="sd">        wavelength (float): Wavelength of the carrier wave.</span>
+<span class="sd">        search_grid (~doatools.estimation.grid.SearchGrid): The search grid</span>
+<span class="sd">            used to locate the sources.</span>
+<span class="sd">        n_snapshots (int): Number of snapshots used.</span>
+<span class="sd">        **kwargs: Other keyword arguments supported by</span>
+<span class="sd">            :class:`~doatools.estimation.core.SpectrumBasedEstimatorBase`.</span>
+<span class="sd">    </span>
+<span class="sd">    References:</span>
+<span class="sd">        [1] D. Malioutov, M. Cetin, and A. S. Willsky, &quot;A sparse signal</span>
+<span class="sd">        reconstruction perspective for source localization with sensor</span>
+<span class="sd">        arrays,&quot; IEEE Transactions on Signal Processing, vol. 53, no. 8,</span>
+<span class="sd">        pp. 3010-3022, Aug. 2005.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span> <span class="n">search_grid</span><span class="p">,</span> <span class="n">n_snapshots</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span> <span class="n">search_grid</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_snapshots</span> <span class="o">=</span> <span class="n">n_snapshots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span> <span class="o">=</span> <span class="n">L21RegularizedLeastSquaresProblem</span><span class="p">(</span>
+            <span class="n">array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">search_grid</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">n_snapshots</span><span class="p">,</span> <span class="kc">True</span>
+        <span class="p">)</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_sparse_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">solver_options</span><span class="p">):</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="o">**</span><span class="n">solver_options</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="nb">ord</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GroupSparseEstimator.estimate">
+<a class="viewcode-back" href="../../../references/doatools.estimation.sparse.html#doatools.estimation.sparse.GroupSparseEstimator.estimate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">solver_options</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimates the source locations from the given measurements.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            Y (~numpy.ndarray): The matrix of measurements, each column of which</span>
+<span class="sd">                represents a single snapshot.</span>
+<span class="sd">            k (int): Expected number of sources.</span>
+<span class="sd">            l (float): The regularization parameter. Larger values of ``l``</span>
+<span class="sd">                usually leads to more sparse solutions, at the cost of increased</span>
+<span class="sd">                biases.</span>
+<span class="sd">            solver_options (dict): A dictionary of additional keyword arguments</span>
+<span class="sd">                to be passed to the optimizer. For instance, you can specify the</span>
+<span class="sd">                solver or set the verbosity.</span>
+<span class="sd">            return_spectrum (bool): Set to ``True`` to also output the spectrum</span>
+<span class="sd">                for visualization. Default value if ``False``.</span>
+<span class="sd">                </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A tuple with the following elements.</span>
+
+<span class="sd">            * resolved (:class:`bool`): ``True`` is the solver successfully</span>
+<span class="sd">              obtained the sparse solution and the peak finder successfully</span>
+<span class="sd">              identified the desired number of peaks. This flag does **not**</span>
+<span class="sd">              guarantee that the estimated source locations are correct. The</span>
+<span class="sd">              estimated source locations may be completely wrong!</span>
+<span class="sd">              If resolved is False, both ``estimates`` and ``spectrum`` will be</span>
+<span class="sd">              ``None``.</span>
+<span class="sd">            * estimates (:class:`~doatools.model.sources.SourcePlacement`):</span>
+<span class="sd">              A :class:`~doatools.model.sources.SourcePlacement` instance of the</span>
+<span class="sd">              same type as the one used in the search grid, represeting the</span>
+<span class="sd">              estimated source locations. Will be ``None`` if resolved is</span>
+<span class="sd">              ``False``.</span>
+<span class="sd">            * spectrum (:class:`~numpy.ndarray`): An numpy array of the same</span>
+<span class="sd">              shape of the specified search grid, consisting of values evaluated</span>
+<span class="sd">              at the grid points. Only present if ``return_spectrum`` is</span>
+<span class="sd">              ``True``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;refine_estimates&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Grid refinement is not supported.&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">Y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The number of rows of Y must be equal to the array size.&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">Y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_snapshots</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The number of columns of Y must be equal to the number of snapshots.&#39;</span><span class="p">)</span>
+        <span class="n">f_sp</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">A</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_sparse_spectrum</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">solver_options</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate</span><span class="p">(</span><span class="n">f_sp</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.model.html">Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

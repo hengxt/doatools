@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Min-Norm based estimators &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ESPRIT based estimators" href="doatools.estimation.esprit.html" />
+    <link rel="prev" title="MUSIC-based Estimators" href="doatools.estimation.music.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="min-norm-based-estimators">
+<h1>Min-Norm based estimators<a class="headerlink" href="#min-norm-based-estimators" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.estimation.min_norm">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.estimation.min_norm" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.min_norm.MinNorm">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.min_norm.</span></span><span class="sig-name descname"><span class="pre">MinNorm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_grid</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/min_norm.html#MinNorm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.min_norm.MinNorm" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SpectrumBasedEstimatorBase</span></code></p>
+<p>Creates a spectrum-based Min-Norm estimator.</p>
+<p>The Min-Norm spectrum is computed on a predefined-grid, and the source
+locations are estimated by identifying the peaks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Array design.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+<li><p><strong>search_grid</strong> (<a class="reference internal" href="doatools.estimation.grid.html#doatools.estimation.grid.SearchGrid" title="doatools.estimation.grid.SearchGrid"><em>SearchGrid</em></a>) – The search grid
+used to locate the sources.</p></li>
+<li><p><strong>**kwargs</strong> – Other keyword arguments supported by
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SpectrumBasedEstimatorBase</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The Min-Norm algorithm is sometimes referred to in the literature as a
+weighted MUSIC algorithm because it uses weighted eigenspaces.</p>
+<p class="rubric">References</p>
+<p>[1] R. Kumaresan and D. W. Tufts, “Estimating the angles of arrival of
+multiple plane waves,” IEEE Trans. Aerospace Electron. Syst.,
+vol. 19, pp. 134-139, Jan. 1983.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.min_norm.MinNorm.estimate">
+<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/min_norm.html#MinNorm.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.min_norm.MinNorm.estimate" title="Link to this definition">¶</a></dt>
+<dd><p>Estimates the source locations from the given covariance matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>R</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Covariance matrix input. The size of R must
+match that of the array design used when creating this
+estimator.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Expected number of sources.</p></li>
+<li><p><strong>return_spectrum</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to also output the spectrum
+for visualization. Default value if <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>refine_estimates</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Set to True to enable grid refinement to
+obtain potentially more accurate estimates.</p></li>
+<li><p><strong>refinement_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Density of the refinement grids. Higher
+density values lead to denser refinement grids and increased
+computational complexity. Default value is 10.</p></li>
+<li><p><strong>refinement_iters</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of refinement iterations. More
+iterations generally lead to better results, at the cost of
+increased computational complexity. Default value is 3.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A tuple with the following elements.</p>
+<ul class="simple">
+<li><p>resolved (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>): A boolean indicating if the desired
+number of sources are found. This flag does <strong>not</strong> guarantee that
+the estimated source locations are correct. The estimated source
+locations may be completely wrong!
+If resolved is False, both <code class="docutils literal notranslate"><span class="pre">estimates</span></code> and <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> will be
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p>estimates (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a>):
+A <a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a> instance of the
+same type as the one used in the search grid, represeting the
+estimated source locations. Will be <code class="docutils literal notranslate"><span class="pre">None</span></code> if resolved is
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p>spectrum (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>): An numpy array of the same
+shape of the specified search grid, consisting of values evaluated
+at the grid points. Only present if <code class="docutils literal notranslate"><span class="pre">return_spectrum</span></code> is
+<code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="doatools.model.html">Modeling</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.estimation.html">Estimation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.grid.html">Creating search grids</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.preprocessing.html">Data preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.source_number.html">Source number detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.beamforming.html">Beamforming based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.music.html">MUSIC-based Estimators</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Min-Norm based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.esprit.html">ESPRIT based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.sparse.html">Sparsity-based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.ml.html">Maximum-likelihood based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.coarray.html">Augmented covariance matrices for difference coarrays</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.estimation.html">Estimation</a><ul>
+      <li>Previous: <a href="doatools.estimation.music.html" title="previous chapter">MUSIC-based Estimators</a></li>
+      <li>Next: <a href="doatools.estimation.esprit.html" title="next chapter">ESPRIT based estimators</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.estimation.min_norm.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

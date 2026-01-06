@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Sparsity-based estimators &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Maximum-likelihood based estimators" href="doatools.estimation.ml.html" />
+    <link rel="prev" title="ESPRIT based estimators" href="doatools.estimation.esprit.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="sparsity-based-estimators">
+<h1>Sparsity-based estimators<a class="headerlink" href="#sparsity-based-estimators" title="Link to this heading">¶</a></h1>
+<section id="module-doatools.estimation.sparse">
+<span id="api-references"></span><h2>API references<a class="headerlink" href="#module-doatools.estimation.sparse" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.L1RegularizedLeastSquaresProblem">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.sparse.</span></span><span class="sig-name descname"><span class="pre">L1RegularizedLeastSquaresProblem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formulation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'penalizedl1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#L1RegularizedLeastSquaresProblem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.L1RegularizedLeastSquaresProblem" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Creates a reusable <span class="math notranslate nohighlight">\(l_1\)</span>-regularized least squares problem.</p>
+<p>Let <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> be an <span class="math notranslate nohighlight">\(M \times L\)</span> real dictionary matrix,
+<span class="math notranslate nohighlight">\(\mathbf{b}\)</span> be an <span class="math notranslate nohighlight">\(M \times 1\)</span> observation vector,
+<span class="math notranslate nohighlight">\(\mathbf{x}\)</span> be a <span class="math notranslate nohighlight">\(K \times 1\)</span> sparse vector, <span class="math notranslate nohighlight">\(l\)</span> be
+a nonnegative scalar. Let <span class="math notranslate nohighlight">\(c\)</span> equal to 0 if <span class="math notranslate nohighlight">\(\mathbf{x}\)</span>
+must be nonnegative and <span class="math notranslate nohighlight">\(-\infty\)</span> if <span class="math notranslate nohighlight">\(\mathbf{x}\)</span> can be any
+real number.</p>
+<p>The default formulation, named <code class="docutils literal notranslate"><span class="pre">'penalizedl1'</span></code>, is given by</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+\min_{\mathbf{x}}&amp;
+\frac{1}{2} \| \mathbf{A}\mathbf{x} - \mathbf{b} \|_2^2 +
+    l \| \mathbf{x} \|_1,\\
+\text{s.t. }&amp; x \geq c
+\end{aligned}\end{split}\]</div>
+<p>This formulation can be efficiently solved with QP or FISTA.</p>
+<p>One common variant, namely the <code class="docutils literal notranslate"><span class="pre">'constraintedl1'</span></code> formulation, is
+given by</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+\min_{\mathbf{x}}&amp; \| \mathbf{A}\mathbf{x} - \mathbf{b} \|_2^2,\\
+\text{s.t. }&amp; \| \mathbf{x} \|_1 \leq l, \mathbf{x} \geq c.
+\end{aligned}\end{split}\]</div>
+<p>This formulation can be efficiently solved with QP.</p>
+<p>A less common variant, namely the <code class="docutils literal notranslate"><span class="pre">'constrainedl2'</span></code> formulation, is
+given by</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+\min_{\mathbf{x}}&amp; \| \mathbf{x} \|_1,\\
+\text{s.t. }&amp; \| \mathbf{A}\mathbf{x} - \mathbf{b} \|_2 \leq l,
+    \mathbf{x} \geq c.
+\end{aligned}\end{split}\]</div>
+<p>Note that the <span class="math notranslate nohighlight">\(l_2\)</span> error is upper bounded by l. If l is too small
+this problem may be infeasible. This formulation can be converted to a
+SOCP problem.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>m</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dimension of the observation vector <span class="math notranslate nohighlight">\(\mathbf{b}\)</span>.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dimension of the sparse vector <span class="math notranslate nohighlight">\(\mathbf{x}\)</span> (or the
+number of columns of the dictionary matrix, <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>).</p></li>
+<li><p><strong>formulation</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – <code class="docutils literal notranslate"><span class="pre">'penalizedl1'</span></code>, <code class="docutils literal notranslate"><span class="pre">'constrainedl1'</span></code> or
+<code class="docutils literal notranslate"><span class="pre">'constrainedl2'</span></code>. Default value is <code class="docutils literal notranslate"><span class="pre">'penalizedl1'</span></code>.</p></li>
+<li><p><strong>nonnegative</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Specifies whether <span class="math notranslate nohighlight">\(\mathbf{x}\)</span> must be
+nonnegative. Default value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.L1RegularizedLeastSquaresProblem.solve">
+<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#L1RegularizedLeastSquaresProblem.solve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.L1RegularizedLeastSquaresProblem.solve" title="Link to this definition">¶</a></dt>
+<dd><p>Solves the problem with the specified parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Dictionary matrix.</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Observation vector.</p></li>
+<li><p><strong>l</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Regularization/constraint parameter.</p></li>
+<li><p><strong>**kwargs</strong> – Other keyword arguments to be passed to the solver.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.L21RegularizedLeastSquaresProblem">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.sparse.</span></span><span class="sig-name descname"><span class="pre">L21RegularizedLeastSquaresProblem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">complex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#L21RegularizedLeastSquaresProblem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.L21RegularizedLeastSquaresProblem" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Creates an <span class="math notranslate nohighlight">\(l_{2,1}\)</span>-norm regularized least squares problem.</p>
+<p>The <span class="math notranslate nohighlight">\(l_{2,1}\)</span>-norm of a matrix variable
+<span class="math notranslate nohighlight">\(\mathbf{X} \in \mathbb{C}^{K \times L}\)</span> is given by</p>
+<div class="math notranslate nohighlight">
+\[\| \mathbf{X} \|_{2,1}
+= \sum_{i=1}^K \left(\sum_{j=1}^L |X_{ij}|^2\right)^{\frac{1}{2}}.\]</div>
+<p>The <span class="math notranslate nohighlight">\(l_{2,1}\)</span>-norm regularized least squares problem is given by</p>
+<div class="math notranslate nohighlight">
+\[\min_{\mathbf{X}}
+\frac{1}{2} \| \mathbf{A}\mathbf{X} - \mathbf{B} \|_F^2 +
+l \| \mathbf{X} \|_{2,1},\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is <span class="math notranslate nohighlight">\(M \times K\)</span>, <span class="math notranslate nohighlight">\(\mathbf{X}\)</span> is
+<span class="math notranslate nohighlight">\(K \times L\)</span>, <span class="math notranslate nohighlight">\(\mathbf{B}\)</span> is <span class="math notranslate nohighlight">\(M \times L\)</span>, and <span class="math notranslate nohighlight">\(l\)</span>
+is the regularization parameter. Usually <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is the
+dictionary matrix, <span class="math notranslate nohighlight">\(\mathbf{X}\)</span> is the sparse signal to be
+reconstructed, and <span class="math notranslate nohighlight">\(\mathbf{B}\)</span> is the observation matrix where each
+column of <span class="math notranslate nohighlight">\(\mathbf{B}\)</span> represents a single observation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>m</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of the dictionary matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of <span class="math notranslate nohighlight">\(\mathbf{X}\)</span> (or the number of columns
+of the dictionary matrix, <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>).</p></li>
+<li><p><strong>n</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of observations (the number of columns of the
+observation matrix, <span class="math notranslate nohighlight">\(\mathbf{B}\)</span>)</p></li>
+<li><p><strong>complex</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Specifies whether all matrices are complex. Default
+value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.L21RegularizedLeastSquaresProblem.solve">
+<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#L21RegularizedLeastSquaresProblem.solve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.L21RegularizedLeastSquaresProblem.solve" title="Link to this definition">¶</a></dt>
+<dd><p>Solves the problem with the specified parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Dictionary matrix.</p></li>
+<li><p><strong>B</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Observation matrix.</p></li>
+<li><p><strong>l</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Regularization parameter.</p></li>
+<li><p><strong>**kwargs</strong> – Other keyword arguments to be passed to the solver.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.SparseCovarianceMatching">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.sparse.</span></span><span class="sig-name descname"><span class="pre">SparseCovarianceMatching</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_known</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formulation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'penalizedl1'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#SparseCovarianceMatching"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.SparseCovarianceMatching" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SpectrumBasedEstimatorBase</span></code></p>
+<p>Creates a source location estimator based on matching the sparse
+representation of the covariance matrix.</p>
+<p>The sources are assumed to be uncorrelated. Take 1D far-field sources
+as an example. After discretizing the range of source locations into a fine
+grid of <span class="math notranslate nohighlight">\(G\)</span> points,
+<span class="math notranslate nohighlight">\(\mathbf{\theta} = [\theta_1, \ldots, \theta_G]^T\)</span>, the vectorized
+covariance matrix can be expressed as</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathbf{r} = \begin{bmatrix}
+    \mathbf{A}^*(\mathbf{\theta}) \odot \mathbf{A}(\mathbf{\theta}) &amp;
+    \mathrm{vec}(\mathbf{I})
+\end{bmatrix}
+\begin{bmatrix} \mathbf{p} \\ \sigma^2 \end{bmatrix}\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is the steering matrix of the discretized source
+locations, <span class="math notranslate nohighlight">\(\mathbf{p} \in \mathbb{R}_+^G\)</span> is a sparse vector of the
+source powers, and <span class="math notranslate nohighlight">\(\sigma^2\)</span> is the noise variance. If all sources
+are located on the grid, <span class="math notranslate nohighlight">\(p_k\)</span> should be non-zero if there is a
+source located at <span class="math notranslate nohighlight">\(\theta_k\)</span> and zero otherwise.</p>
+<p>Let <span class="math notranslate nohighlight">\(\mathbf{\Phi} = \lbrack \mathbf{A}^* \odot \mathbf{A}, \mathrm{vec}(\mathbf{I}) \rbrack\)</span>,
+and <span class="math notranslate nohighlight">\(\mathbf{x} = \lbrack \mathbf{p}^T, \sigma^2 \rbrack^T\)</span>. We have
+<span class="math notranslate nohighlight">\(\mathbf{r} = \mathbf{\Phi} \mathbf{x}\)</span>, where <span class="math notranslate nohighlight">\(\mathbf{x}\)</span> is
+sparse. We call this expression the sparse representation of the covariance
+matrix. Given the estimate of <span class="math notranslate nohighlight">\(\mathbf{r}\)</span>, <span class="math notranslate nohighlight">\(\hat{\mathbf{r}}\)</span>,
+we can formulate a sparse recovery problem to recovery the sparse vector
+<span class="math notranslate nohighlight">\(\mathbf{x}\)</span>, and then recover the source locations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Array design.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+<li><p><strong>search_grid</strong> (<a class="reference internal" href="doatools.estimation.grid.html#doatools.estimation.grid.SearchGrid" title="doatools.estimation.grid.SearchGrid"><em>SearchGrid</em></a>) – The search grid
+used to locate the sources.</p></li>
+<li><p><strong>formulation</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – <code class="docutils literal notranslate"><span class="pre">'penalizedl1'</span></code>, <code class="docutils literal notranslate"><span class="pre">'constrainedl1'</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">'constrainedl2'</span></code>.</p></li>
+<li><p><strong>**kwargs</strong> – Other keyword arguments supported by
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SpectrumBasedEstimatorBase</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] J. Yin and T. Chen, “Direction-of-Arrival Estimation Using a Sparse
+Representation of Array Covariance Vectors,” IEEE Transactions on
+Signal Processing, vol. 59, no. 9, pp. 4489–4493, Sep. 2011.</p>
+<p>[2] Y. D. Zhang, M. G. Amin, and B. Himed, “Sparsity-based DOA
+estimation using co-prime arrays,” in 2013 IEEE International
+Conference on Acoustics, Speech and Signal Processing (ICASSP),
+2013, pp. 3967-3971.</p>
+<p>[3] Z. Tan and A. Nehorai, “Sparse direction of arrival estimation using
+co-prime arrays with off-grid targets,” IEEE Signal Processing
+Letters, vol. 21, no. 1, pp. 26-29, Jan. 2014.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.SparseCovarianceMatching.estimate">
+<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#SparseCovarianceMatching.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.SparseCovarianceMatching.estimate" title="Link to this definition">¶</a></dt>
+<dd><p>Estimates the source locations from the given covariance matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>R</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – Covariance matrix input. The size of R must
+match that of the array design used when creating this
+estimator.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Expected number of sources.</p></li>
+<li><p><strong>l</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – <p>The regularization parameter. The meaning of this
+parameter depends on the formulation:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">'penalizedl1'</span></code>: regularization parameter of the l1 penalty
+term. Larger values of <code class="docutils literal notranslate"><span class="pre">l</span></code> usually leads to more sparse
+solutions, at the cost of increased biases.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'constrainedl1'</span></code>: upper bound of the l1 norm of the signal
+vector. Smaller values of <code class="docutils literal notranslate"><span class="pre">l</span></code> usually leads to more sparse
+solutions, at the cost of increased biases.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'constrainedl2'</span></code>: upper bound of the l2 norm of the
+residual. Smaller values of <code class="docutils literal notranslate"><span class="pre">l</span></code> usually leads to better
+reconstruction results. However the optimization problem
+will become infeasible if <code class="docutils literal notranslate"><span class="pre">l</span></code> is too small.</p></li>
+</ul>
+<p>See <a class="reference internal" href="#doatools.estimation.sparse.L1RegularizedLeastSquaresProblem" title="doatools.estimation.sparse.L1RegularizedLeastSquaresProblem"><code class="xref py py-class docutils literal notranslate"><span class="pre">L1RegularizedLeastSquaresProblem</span></code></a>
+for more details.</p>
+</p></li>
+<li><p><strong>solver_options</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A dictionary of additional keyword arguments
+to be passed to the optimizer. For instance, you can specify the
+solver or set the verbosity.</p></li>
+<li><p><strong>return_spectrum</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to also output the spectrum
+for visualization. Default value if <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A tuple with the following elements.</p>
+<ul class="simple">
+<li><p>resolved (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>): <code class="docutils literal notranslate"><span class="pre">True</span></code> is the solver successfully
+obtained the sparse solution and the peak finder successfully
+identified the desired number of peaks. This flag does <strong>not</strong>
+guarantee that the estimated source locations are correct. The
+estimated source locations may be completely wrong!
+If resolved is False, both <code class="docutils literal notranslate"><span class="pre">estimates</span></code> and <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> will be
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p>estimates (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a>):
+A <a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a> instance of the
+same type as the one used in the search grid, represeting the
+estimated source locations. Will be <code class="docutils literal notranslate"><span class="pre">None</span></code> if resolved is
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p>spectrum (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>): An numpy array of the same
+shape of the specified search grid, consisting of values evaluated
+at the grid points. Only present if <code class="docutils literal notranslate"><span class="pre">return_spectrum</span></code> is
+<code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.GroupSparseEstimator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">doatools.estimation.sparse.</span></span><span class="sig-name descname"><span class="pre">GroupSparseEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_snapshots</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#GroupSparseEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.GroupSparseEstimator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SpectrumBasedEstimatorBase</span></code></p>
+<p>Creates a group-sparsity based estimator.</p>
+<p>The group-sparsity based estimator considers the following mulitple
+measurement vector (MMV) model:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{Y} = \mathbf{A} \mathbf{X} + \mathbf{N},\]</div>
+<p>where each column of <span class="math notranslate nohighlight">\(\mathbf{Y}\)</span> represents a single snapshot
+vector, each column of <span class="math notranslate nohighlight">\(\mathbf{X}\)</span> represents a single source signal
+vector, each column of <span class="math notranslate nohighlight">\(\mathbf{N}\)</span> represents a single noise vector.</p>
+<p>Similar to <a class="reference internal" href="#doatools.estimation.sparse.SparseCovarianceMatching" title="doatools.estimation.sparse.SparseCovarianceMatching"><code class="xref py py-class docutils literal notranslate"><span class="pre">SparseCovarianceMatching</span></code></a>, we discretize the range of
+source locations into a fine grid, and <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is the steering
+matrix of the discretized source locations. If we can find out the non-zero
+rows of <span class="math notranslate nohighlight">\(\mathbf{X}\)</span>, we can then recover the source locations.</p>
+<p>The group-sparsity based estimator solves the following mixed-norm
+optimization problem:</p>
+<div class="math notranslate nohighlight">
+\[\min_{\mathbf{X}} \frac{1}{2}\| \mathbf{A}\mathbf{X} - \mathbf{Y} \|_2
++ \lambda \| \mathbf{X} \|_{2,1},\]</div>
+<p>where <span class="math notranslate nohighlight">\(\lambda\)</span> is the regularization parameter, and</p>
+<div class="math notranslate nohighlight">
+\[\| \mathbf{X} \|_{2,1}
+=\sum_{i} \left(\sum_{j} |X_{ij}|^2\right)^{\frac{1}{2}}.\]</div>
+<p>After recovering <span class="math notranslate nohighlight">\(\mathbf{X}\)</span>, the <span class="math notranslate nohighlight">\(l_2\)</span> norms of the rows of
+<span class="math notranslate nohighlight">\(\mathbf{X}\)</span> forms a pseudo spectrum. We can then find the source
+locations by identifying the largest peaks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="doatools.model.arrays.html#doatools.model.arrays.ArrayDesign" title="doatools.model.arrays.ArrayDesign"><em>ArrayDesign</em></a>) – Array design.</p></li>
+<li><p><strong>wavelength</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Wavelength of the carrier wave.</p></li>
+<li><p><strong>search_grid</strong> (<a class="reference internal" href="doatools.estimation.grid.html#doatools.estimation.grid.SearchGrid" title="doatools.estimation.grid.SearchGrid"><em>SearchGrid</em></a>) – The search grid
+used to locate the sources.</p></li>
+<li><p><strong>n_snapshots</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of snapshots used.</p></li>
+<li><p><strong>**kwargs</strong> – Other keyword arguments supported by
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SpectrumBasedEstimatorBase</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>[1] D. Malioutov, M. Cetin, and A. S. Willsky, “A sparse signal
+reconstruction perspective for source localization with sensor
+arrays,” IEEE Transactions on Signal Processing, vol. 53, no. 8,
+pp. 3010-3022, Aug. 2005.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="doatools.estimation.sparse.GroupSparseEstimator.estimate">
+<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/doatools/estimation/sparse.html#GroupSparseEstimator.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#doatools.estimation.sparse.GroupSparseEstimator.estimate" title="Link to this definition">¶</a></dt>
+<dd><p>Estimates the source locations from the given measurements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Y</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a>) – The matrix of measurements, each column of which
+represents a single snapshot.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Expected number of sources.</p></li>
+<li><p><strong>l</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The regularization parameter. Larger values of <code class="docutils literal notranslate"><span class="pre">l</span></code>
+usually leads to more sparse solutions, at the cost of increased
+biases.</p></li>
+<li><p><strong>solver_options</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A dictionary of additional keyword arguments
+to be passed to the optimizer. For instance, you can specify the
+solver or set the verbosity.</p></li>
+<li><p><strong>return_spectrum</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to also output the spectrum
+for visualization. Default value if <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A tuple with the following elements.</p>
+<ul class="simple">
+<li><p>resolved (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>): <code class="docutils literal notranslate"><span class="pre">True</span></code> is the solver successfully
+obtained the sparse solution and the peak finder successfully
+identified the desired number of peaks. This flag does <strong>not</strong>
+guarantee that the estimated source locations are correct. The
+estimated source locations may be completely wrong!
+If resolved is False, both <code class="docutils literal notranslate"><span class="pre">estimates</span></code> and <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> will be
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p>estimates (<a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a>):
+A <a class="reference internal" href="doatools.model.sources.html#doatools.model.sources.SourcePlacement" title="doatools.model.sources.SourcePlacement"><code class="xref py py-class docutils literal notranslate"><span class="pre">SourcePlacement</span></code></a> instance of the
+same type as the one used in the search grid, represeting the
+estimated source locations. Will be <code class="docutils literal notranslate"><span class="pre">None</span></code> if resolved is
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p>spectrum (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>): An numpy array of the same
+shape of the specified search grid, consisting of values evaluated
+at the grid points. Only present if <code class="docutils literal notranslate"><span class="pre">return_spectrum</span></code> is
+<code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="doatools.model.html">Modeling</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="doatools.estimation.html">Estimation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.grid.html">Creating search grids</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.preprocessing.html">Data preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.source_number.html">Source number detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.beamforming.html">Beamforming based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.music.html">MUSIC-based Estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.min_norm.html">Min-Norm based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.esprit.html">ESPRIT based estimators</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Sparsity-based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.ml.html">Maximum-likelihood based estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doatools.estimation.coarray.html">Augmented covariance matrices for difference coarrays</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="doatools.estimation.html">Estimation</a><ul>
+      <li>Previous: <a href="doatools.estimation.esprit.html" title="previous chapter">ESPRIT based estimators</a></li>
+      <li>Next: <a href="doatools.estimation.ml.html" title="next chapter">Maximum-likelihood based estimators</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018, Mianzhi Wang.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/references/doatools.estimation.sparse.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
