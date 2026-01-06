@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import inspect
+
+from tqdm import tqdm
 from ..model.arrays import ArrayDesign
 from ..model.sources import FarField1DSourcePlacement
 from ..model.signals import ComplexStochasticSignal
@@ -230,7 +232,7 @@ class DOAPerformanceEvaluator:
                                        return_mode='mean_diag')
         return crb
     
-    def evaluate(self, custom_metrics=None):
+    def evaluate(self, custom_metrics=None, verbose=0):
         """Performs performance evaluation.
         
         Args:
@@ -238,6 +240,7 @@ class DOAPerformanceEvaluator:
                 where keys are metric names and values are functions that accept two parameters 
                 (estimated locations and true locations) and return a metric value.
                 For example: {'mae': lambda est, true: np.mean(np.abs(est - true))}
+            verbose (int, optional): Verbosity level. 0 for silent, 1 for progress bar.
         
         Returns:
             PerformanceResult: Evaluation result object.
@@ -263,6 +266,7 @@ class DOAPerformanceEvaluator:
             custom_metrics = {}
         
         # evaluate each estimator
+        tbar = tqdm(total=len(self.estimators)*self.n_monte_carlo, desc='Evaluating estimators', disable=verbose < 1)
         for estimator_name, estimator in self.estimators.items():
             metric_results = {}
             
@@ -290,6 +294,7 @@ class DOAPerformanceEvaluator:
 
                 if resolved:
                     all_estimates.append(estimates.locations)
+                tbar.update(1)
             
             # compute basic statistics
             if len(all_estimates) > 0:
@@ -338,14 +343,14 @@ class DOAPerformanceEvaluator:
             
             sample_estimates = all_estimates if (self.save_sample_estimates and len(all_estimates) > 0) else None
             result.add_estimator_result(estimator_name, metric_results, sample_estimates)
-        
+        tbar.close()
         result.computation_time = time.time() - start_time
         return result
 
 
 def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
                          estimators, crb_types=None, metrics=None, custom_metrics=None,
-                         save_sample_estimates=False):
+                         save_sample_estimates=False, verbose=0):
     """Performance evaluation function for quickly assessing DOA algorithm performance.
     
     This function is a simplified interface for the DOAPerformanceEvaluator class,
@@ -383,4 +388,4 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
         metrics=metrics,
         save_sample_estimates=save_sample_estimates
     )
-    return evaluator.evaluate(custom_metrics)
+    return evaluator.evaluate(custom_metrics, verbose=verbose)

@@ -25,6 +25,8 @@ class CoarrayACMBuilder1D:
             raise ValueError('Expecting a 1D grid-based array.')
         self._array = array
         self._w = WeightFunction1D(array)
+        self._S = self.select_matrix
+        self._M = self.mask_matrix
 
     def __call__(self, R, method='ss'):
         """A shortcut to :meth:`transform`."""
@@ -39,7 +41,7 @@ class CoarrayACMBuilder1D:
     def output_size(self):
         """Retrieves the size of the output/transformed covariance matrix."""
         return self._w.get_max_aperture_size(True)
-    
+
     def get_virtual_ula(self, name=None):
         """Retrieves the corresponding virtual uniform linear array.
 
@@ -54,6 +56,37 @@ class CoarrayACMBuilder1D:
         if name is None:
             name = 'Virtual ULA of ' + self._array.name
         return UniformLinearArray(self.output_size, self._array.d0, name)
+
+    @property
+    def select_matrix(self):
+        """Retrieves the corresponding selection matrix.
+
+        Returns:
+            ~numpy.ndarray: The selection matrix.
+        """
+        n = self._array.size
+        m = self.output_size
+        row_select_matrix = np.zeros((n, m), dtype=int)
+        for i in range(n):
+            row_select_matrix[i,self._array.element_indices[i]] = 1
+        return row_select_matrix
+
+    
+    @property
+    def mask_matrix(self):
+        """Retrieves the corresponding mask matrix.
+
+        Returns:
+            ~numpy.ndarray: The mask matrix.
+        """
+        n = self._array.size
+        m = self.output_size
+        mask_matrix = np.zeros((m, m), dtype=int)
+        for i in range(n):
+            for j in range(n):
+                mask_matrix[self._array.element_indices[i], self._array.element_indices[j]] = 1
+        return mask_matrix
+
 
     def transform(self, R, method='ss'):
         """Transforms the input sample covariance matrix.
