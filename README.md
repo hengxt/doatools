@@ -4,6 +4,12 @@
 >
 > The original project is an open-source project under the MIT license, but has not been updated since approximately 2018. This project aims to modernize, enhance, and maintain it long-term.
 
+---
+
+**📄 Read this in Chinese: [中文版本](README_CN.md)**
+
+---
+
 ## 📖 Project Origin
 
 This project is forked from [morriswmz/doatools.py](https://github.com/morriswmz/doatools.py), a Python library for **Direction of Arrival (DoA) estimation**.

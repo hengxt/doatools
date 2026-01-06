@@ -4,6 +4,12 @@
 >
 > 原项目为使用MIT协议的开源项目，但由于已长期未更新（最后维护于约2018年），本项目旨在对其进行现代化重构、功能增强和长期维护。
 
+---
+
+**📄 Read this in English: [English Version](README_EN.md)**
+
+---
+
 ## 📖 项目起源
 
 本项目派生（Fork）自 [morriswmz/doatools.py](https://github.com/morriswmz/doatools.py)，一个用于**波达方向（Direction of Arrival, DoA）估计**的Python工具库。
