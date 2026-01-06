@@ -31,8 +31,8 @@ __version__ = find_version()
 # -- Project information -----------------------------------------------------
 
 project = 'DoaTools'
-copyright = '2018, Mianzhi Wang'
-author = 'Mianzhi Wang'
+copyright = '2026, Xiantao Heng'
+author = 'Xiantao Heng'
 
 # The short X.Y version
 version = '.'.join(__version__.split('.')[:-1])
@@ -158,7 +158,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'doatools.tex', 'doatools Documentation',
-     'Mianzhi Wang', 'manual'),
+     'Xiantao Heng', 'manual'),
 ]
 
 

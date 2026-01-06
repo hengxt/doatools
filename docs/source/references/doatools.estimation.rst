@@ -14,3 +14,4 @@ Estimation
     doatools.estimation.sparse
     doatools.estimation.ml
     doatools.estimation.coarray
+    doatools.estimation.coarray_reconstruction

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>doatools.performance.evaluator &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../../../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for doatools.performance.evaluator</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.crb</span><span class="w"> </span><span class="kn">import</span> <span class="n">crb_det_farfield_1d</span><span class="p">,</span> <span class="n">crb_sto_farfield_1d</span><span class="p">,</span> <span class="n">crb_stouc_farfield_1d</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..model.arrays</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArrayDesign</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..model.signals</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComplexStochasticSignal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..model.sources</span><span class="w"> </span><span class="kn">import</span> <span class="n">FarField1DSourcePlacement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..model</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_narrowband_snapshots</span>
+
+
+<div class="viewcode-block" id="PerformanceResult">
+<a class="viewcode-back" href="../../../references/doatools.performance.evaluator.html#doatools.performance.evaluator.PerformanceResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformanceResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Encapsulates performance evaluation results.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        snr (float): Signal-to-noise ratio in dB.</span>
+<span class="sd">        n_snapshots (int): Number of snapshots.</span>
+<span class="sd">        n_monte_carlo (int): Number of Monte Carlo simulations.</span>
+<span class="sd">        crb_values (dict): Dictionary containing different types of CRB values, </span>
+<span class="sd">            where keys are CRB types and values are CRB values.</span>
+<span class="sd">        estimator_results (dict): Results for different estimators, where keys are </span>
+<span class="sd">            estimator names and values are dictionaries containing different metrics.</span>
+<span class="sd">        estimator_times (dict): Computation time for each estimator in seconds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">n_snapshots</span><span class="p">,</span> <span class="n">n_monte_carlo</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">snr</span> <span class="o">=</span> <span class="n">snr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span> <span class="o">=</span> <span class="n">n_snapshots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span> <span class="o">=</span> <span class="n">n_monte_carlo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crb_values</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimator_results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimator_times</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_estimates</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="PerformanceResult.add_crb">
+<a class="viewcode-back" href="../../../references/doatools.performance.evaluator.html#doatools.performance.evaluator.PerformanceResult.add_crb">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_crb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">crb_type</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds a CRB value.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            crb_type (str): Type of CRB.</span>
+<span class="sd">            value (float): CRB value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crb_values</span><span class="p">[</span><span class="n">crb_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="PerformanceResult.add_estimator_result">
+<a class="viewcode-back" href="../../../references/doatools.performance.evaluator.html#doatools.performance.evaluator.PerformanceResult.add_estimator_result">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_estimator_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">estimator_name</span><span class="p">,</span> <span class="n">metric_results</span><span class="p">,</span> <span class="n">sample_estimates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">computation_time</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds estimator results.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            estimator_name (str): Name of the estimator.</span>
+<span class="sd">            metric_results (dict): Metric results, where keys are metric names and </span>
+<span class="sd">                values are metric values.</span>
+<span class="sd">            sample_estimates (array, optional): Array of sample estimates with shape </span>
+<span class="sd">                (n_runs, n_sources).</span>
+<span class="sd">            computation_time (float, optional): Computation time for this estimator in seconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimator_results</span><span class="p">[</span><span class="n">estimator_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric_results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimator_times</span><span class="p">[</span><span class="n">estimator_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">computation_time</span>
+        <span class="k">if</span> <span class="n">sample_estimates</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_estimates</span><span class="p">[</span><span class="n">estimator_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_estimates</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a string representation of the results.&quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Performance Result (SNR: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snr</span><span class="si">}</span><span class="s2"> dB, Snapshots: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="si">}</span><span class="s2">, Monte Carlo: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;CRB Values:</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">crb_type</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">crb_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">crb_type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">:</span><span class="s2">&lt;15</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">12.6e</span><span class="si">}</span><span class="s2"> rad²</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;Estimator Results:</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">estimator_name</span><span class="p">,</span> <span class="n">metric_results</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">estimator_name</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metric_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">metric</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;bias&#39;</span><span class="p">,</span> <span class="s1">&#39;mae&#39;</span><span class="p">,</span> <span class="s1">&#39;rmse&#39;</span><span class="p">]:</span>
+                    <span class="n">unit</span> <span class="o">=</span> <span class="s2">&quot;rad&quot;</span>
+                <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s1">&#39;mse&#39;</span><span class="p">:</span>
+                    <span class="n">unit</span> <span class="o">=</span> <span class="s2">&quot;rad²&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">unit</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">metric</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">:</span><span class="s2">&lt;25</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">12.6e</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="c1"># Add estimator computation time</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="s1">&#39;AVERAGE COMPUTATION TIME&#39;</span><span class="si">:</span><span class="s2">&lt;25</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">estimator_times</span><span class="p">[</span><span class="n">estimator_name</span><span class="p">]</span><span class="si">:</span><span class="s2">12.6e</span><span class="si">}</span><span class="s2"> seconds</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">s</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a repr representation of the results.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_single_monte_carlo_run</span><span class="p">(</span><span class="n">estimator</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">n_snapshots</span><span class="p">,</span> <span class="n">power_source</span><span class="p">,</span> <span class="n">power_noise</span><span class="p">,</span> <span class="n">run_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performs a single Monte Carlo run for a given estimator.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        estimator: The DOA estimator instance.</span>
+<span class="sd">        array: The array design.</span>
+<span class="sd">        sources: The source locations.</span>
+<span class="sd">        n_snapshots: Number of snapshots.</span>
+<span class="sd">        power_source: Source power.</span>
+<span class="sd">        power_noise: Noise power.</span>
+<span class="sd">        run_id: The run identifier (unused, but required for parallel processing).</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (estimated_locations, run_time) where estimated_locations is numpy.ndarray if resolved, otherwise None,</span>
+<span class="sd">               and run_time is the time taken for this run in seconds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">source_signal</span> <span class="o">=</span> <span class="n">ComplexStochasticSignal</span><span class="p">(</span><span class="n">sources</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">power_source</span><span class="p">)</span>
+    <span class="n">noise_signal</span> <span class="o">=</span> <span class="n">ComplexStochasticSignal</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">power_noise</span><span class="p">)</span>
+    <span class="n">y</span><span class="p">,</span> <span class="n">Ry</span> <span class="o">=</span> <span class="n">get_narrowband_snapshots</span><span class="p">(</span>
+        <span class="n">array</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">estimator</span><span class="o">.</span><span class="n">_wavelength</span><span class="p">,</span> <span class="n">source_signal</span><span class="p">,</span> <span class="n">noise_signal</span><span class="p">,</span>
+        <span class="n">n_snapshots</span><span class="p">,</span> <span class="n">return_covariance</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span> 
+
+    <span class="n">run_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="c1"># execute DOA estimation</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">4</span> <span class="ow">or</span> <span class="s1">&#39;d0&#39;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+        <span class="n">resolved</span><span class="p">,</span> <span class="n">estimates</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">Ry</span><span class="p">,</span> <span class="n">sources</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">array</span><span class="o">.</span><span class="n">d0</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resolved</span><span class="p">,</span> <span class="n">estimates</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">Ry</span><span class="p">,</span> <span class="n">sources</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">run_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">run_start_time</span>
+
+    <span class="k">if</span> <span class="n">resolved</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">estimates</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span> <span class="n">run_time</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">run_time</span>
+
+
+<div class="viewcode-block" id="DOAPerformanceEvaluator">
+<a class="viewcode-back" href="../../../references/doatools.performance.evaluator.html#doatools.performance.evaluator.DOAPerformanceEvaluator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DOAPerformanceEvaluator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;DOA performance evaluator for assessing DOA estimation algorithms under different conditions.</span>
+<span class="sd">    </span>
+<span class="sd">    This evaluator accepts user-specified parameters, performs Monte Carlo simulations,</span>
+<span class="sd">    computes evaluation metrics (MSE, RMSE) and theoretical performance bounds (CRLB),</span>
+<span class="sd">    and returns the results along with computation time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">n_snapshots</span><span class="p">,</span> <span class="n">n_monte_carlo</span><span class="p">,</span>
+                 <span class="n">estimators</span><span class="p">,</span> <span class="n">crb_types</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">save_sample_estimates</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the performance evaluator.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            array (~doatools.model.arrays.ArrayDesign): Array design.</span>
+<span class="sd">            sources (~doatools.model.sources.FarField1DSourcePlacement): Source locations.</span>
+<span class="sd">            snr (float): Signal-to-noise ratio in dB.</span>
+<span class="sd">            n_snapshots (int): Number of snapshots.</span>
+<span class="sd">            n_monte_carlo (int): Number of Monte Carlo simulations.</span>
+<span class="sd">            estimators (dict or list or object): DOA estimator instance, list of instances, </span>
+<span class="sd">                or dictionary of estimators.</span>
+<span class="sd">                If a dictionary, keys are estimator names and values are estimator instances.</span>
+<span class="sd">                If a list, estimator class names are used as names.</span>
+<span class="sd">                If a single instance, its class name is used as the name.</span>
+<span class="sd">            crb_types (list or str, optional): List of CRLB types or a single type.</span>
+<span class="sd">                Possible values: &#39;sto&#39; (stochastic CRB), &#39;det&#39; (deterministic CRB), </span>
+<span class="sd">                &#39;stouc&#39; (stochastic uncorrelated CRB). Default value is [&#39;sto&#39;].</span>
+<span class="sd">            metrics (list or str, optional): List of evaluation metrics or a single metric.</span>
+<span class="sd">                Possible values: &#39;mse&#39; (mean squared error), &#39;rmse&#39; (root mean squared error).</span>
+<span class="sd">                Default value is [&#39;mse&#39;].</span>
+<span class="sd">            save_sample_estimates (bool, optional): Whether to save sample estimates. </span>
+<span class="sd">                Default value is False.</span>
+<span class="sd">            n_jobs (int, optional): Number of parallel jobs to run. Default is 1 (no parallelism).</span>
+<span class="sd">                If -1, use all available CPUs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sources</span> <span class="o">=</span> <span class="n">sources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">snr</span> <span class="o">=</span> <span class="n">snr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span> <span class="o">=</span> <span class="n">n_snapshots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span> <span class="o">=</span> <span class="n">n_monte_carlo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="o">=</span> <span class="n">n_jobs</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_estimators</span><span class="p">(</span><span class="n">estimators</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">crb_types</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">crb_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sto&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">crb_types</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">crb_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">crb_types</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crb_types</span> <span class="o">=</span> <span class="n">crb_types</span>
+        <span class="k">if</span> <span class="n">metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mse&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="n">metrics</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_inputs</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_sample_estimates</span> <span class="o">=</span> <span class="n">save_sample_estimates</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_precompute_parameters</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_estimators</span><span class="p">(</span><span class="n">estimators</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Processes the estimators parameter and converts it to a dictionary.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            estimators (dict or list or object): Estimator instance, list of instances, or dictionary.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: Dictionary of estimators, where keys are estimator names and values are instances.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">estimators</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">estimators</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">estimators</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">estimator</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">estimator</span> <span class="k">for</span> <span class="n">estimator</span> <span class="ow">in</span> <span class="n">estimators</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">estimators</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">estimators</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validates the input parameters.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">ArrayDesign</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;array must be an instance of ArrayDesign&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span> <span class="n">FarField1DSourcePlacement</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;sources must be an instance of FarField1DSourcePlacement&#39;</span><span class="p">)</span>
+
+        <span class="c1"># validate each estimator</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">estimator</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimators</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">estimator</span><span class="p">,</span> <span class="s1">&#39;estimate&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;estimator </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> must have a callable estimate method&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">estimator</span><span class="p">,</span> <span class="s1">&#39;_wavelength&#39;</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;estimator </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> must have a _wavelength attribute&#39;</span><span class="p">)</span>
+
+        <span class="c1"># validate CRB types</span>
+        <span class="n">valid_crb_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sto&#39;</span><span class="p">,</span> <span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;stouc&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">crb_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">crb_types</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">crb_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_crb_types</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;crb_type </span><span class="si">{</span><span class="n">crb_type</span><span class="si">}</span><span class="s1"> must be one of: </span><span class="si">{</span><span class="n">valid_crb_types</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="c1"># validate metrics</span>
+        <span class="n">valid_metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bias&#39;</span><span class="p">,</span> <span class="s1">&#39;mae&#39;</span><span class="p">,</span> <span class="s1">&#39;mse&#39;</span><span class="p">,</span> <span class="s1">&#39;rmse&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">metric</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_metrics</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;metric </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s1"> must be one of: </span><span class="si">{</span><span class="n">valid_metrics</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;n_monte_carlo must be positive&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;n_snapshots must be positive&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_precompute_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Precomputes some parameters.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span> <span class="o">/</span> <span class="p">(</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">snr</span> <span class="o">/</span> <span class="mi">10</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_signal</span> <span class="o">=</span> <span class="n">ComplexStochasticSignal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise_signal</span> <span class="o">=</span> <span class="n">ComplexStochasticSignal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_crb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">crb_type</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes the theoretical performance bound (CRLB).</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            crb_type (str): CRB type.</span>
+<span class="sd">            wavelength (float): Wavelength.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            float: CRB value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">crb</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="n">crb_type</span> <span class="o">==</span> <span class="s1">&#39;sto&#39;</span><span class="p">:</span>
+            <span class="n">crb</span> <span class="o">=</span> <span class="n">crb_sto_farfield_1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="p">,</span>
+                                      <span class="n">return_mode</span><span class="o">=</span><span class="s1">&#39;mean_diag&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">crb_type</span> <span class="o">==</span> <span class="s1">&#39;det&#39;</span><span class="p">:</span>
+            <span class="c1"># for deterministic CRB, we need the source covariance matrix</span>
+            <span class="c1"># use identity matrix as approximation</span>
+            <span class="n">Rs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span>
+            <span class="n">crb</span> <span class="o">=</span> <span class="n">crb_det_farfield_1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span>
+                                      <span class="n">Rs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="p">,</span>
+                                      <span class="n">return_mode</span><span class="o">=</span><span class="s1">&#39;mean_diag&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">crb_type</span> <span class="o">==</span> <span class="s1">&#39;stouc&#39;</span><span class="p">:</span>
+            <span class="n">crb</span> <span class="o">=</span> <span class="n">crb_stouc_farfield_1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span> <span class="n">wavelength</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="p">,</span>
+                                        <span class="n">return_mode</span><span class="o">=</span><span class="s1">&#39;mean_diag&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">crb</span>
+
+<div class="viewcode-block" id="DOAPerformanceEvaluator.evaluate">
+<a class="viewcode-back" href="../../../references/doatools.performance.evaluator.html#doatools.performance.evaluator.DOAPerformanceEvaluator.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">custom_metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Performs performance evaluation.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            custom_metrics (dict, optional): Dictionary of custom evaluation metrics, </span>
+<span class="sd">                where keys are metric names and values are functions that accept two parameters </span>
+<span class="sd">                (estimated locations and true locations) and return a metric value.</span>
+<span class="sd">                For example: {&#39;mae&#39;: lambda est, true: np.mean(np.abs(est - true))}</span>
+<span class="sd">            verbose (int, optional): Verbosity level. 0 for silent, 1 for progress bar.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            PerformanceResult: Evaluation result object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">PerformanceResult</span><span class="p">(</span>
+            <span class="n">snr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">snr</span><span class="p">,</span>
+            <span class="n">n_snapshots</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="p">,</span>
+            <span class="n">n_monte_carlo</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span>
+        <span class="p">)</span>
+
+        <span class="c1"># compute all CRB values</span>
+        <span class="n">reference_wavelength</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estimators</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span><span class="o">.</span><span class="n">_wavelength</span>
+        <span class="k">for</span> <span class="n">crb_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">crb_types</span><span class="p">:</span>
+            <span class="n">crb_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_crb</span><span class="p">(</span><span class="n">crb_type</span><span class="p">,</span> <span class="n">reference_wavelength</span><span class="p">)</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">add_crb</span><span class="p">(</span><span class="n">crb_type</span><span class="p">,</span> <span class="n">crb_value</span><span class="p">)</span>
+
+        <span class="c1"># handle custom metrics</span>
+        <span class="k">if</span> <span class="n">custom_metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">custom_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># evaluate each estimator</span>
+        <span class="n">tbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estimators</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;Evaluating estimators&#39;</span><span class="p">,</span> <span class="n">disable</span><span class="o">=</span><span class="n">verbose</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Determine the number of processes to use</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">n_processes</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_processes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">estimator_name</span><span class="p">,</span> <span class="n">estimator</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimators</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">metric_results</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">all_estimates</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">all_run_times</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="n">n_processes</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Use parallel processing</span>
+                <span class="k">with</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="n">n_processes</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+                    <span class="c1"># Create a list of arguments for each run</span>
+                    <span class="n">args_list</span> <span class="o">=</span> <span class="p">[(</span><span class="n">estimator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span><span class="p">)]</span>
+                    <span class="c1"># Execute in parallel</span>
+                    <span class="n">results</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">starmap</span><span class="p">(</span><span class="n">_single_monte_carlo_run</span><span class="p">,</span> <span class="n">args_list</span><span class="p">)</span>
+                    <span class="c1"># Collect valid results and run times</span>
+                    <span class="k">for</span> <span class="n">res</span><span class="p">,</span> <span class="n">run_time</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+                        <span class="n">all_run_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_time</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">all_estimates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+                        <span class="n">tbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_monte_carlo</span><span class="p">):</span>
+                    <span class="n">res</span><span class="p">,</span> <span class="n">run_time</span> <span class="o">=</span> <span class="n">_single_monte_carlo_run</span><span class="p">(</span><span class="n">estimator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_snapshots</span><span class="p">,</span>
+                                                          <span class="bp">self</span><span class="o">.</span><span class="n">power_source</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_noise</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">all_run_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_time</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">all_estimates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+                    <span class="n">tbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># compute basic statistics</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_estimates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">all_estimates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">all_estimates</span><span class="p">)</span>
+                <span class="n">true_locations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">locations</span>
+
+                <span class="n">biases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_estimates</span> <span class="o">-</span> <span class="n">true_locations</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">avg_bias</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">biases</span><span class="p">))</span>
+
+                <span class="n">mse_per_source</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">all_estimates</span> <span class="o">-</span> <span class="n">true_locations</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">avg_mse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">mse_per_source</span><span class="p">)</span>
+
+                <span class="n">avg_rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">avg_mse</span><span class="p">)</span>
+
+                <span class="n">mae_per_source</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">all_estimates</span> <span class="o">-</span> <span class="n">true_locations</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">avg_mae</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">mae_per_source</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">avg_bias</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+                <span class="n">avg_mse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">**</span> <span class="mi">2</span>
+                <span class="n">avg_rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+                <span class="n">avg_mae</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+
+            <span class="c1"># save all metrics</span>
+            <span class="n">metric_values</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;bias&#39;</span><span class="p">:</span> <span class="n">avg_bias</span><span class="p">,</span>
+                <span class="s1">&#39;mae&#39;</span><span class="p">:</span> <span class="n">avg_mae</span><span class="p">,</span>
+                <span class="s1">&#39;mse&#39;</span><span class="p">:</span> <span class="n">avg_mse</span><span class="p">,</span>
+                <span class="s1">&#39;rmse&#39;</span><span class="p">:</span> <span class="n">avg_rmse</span>
+            <span class="p">}</span>
+
+            <span class="c1"># save custom metrics</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metric_values</span><span class="p">:</span>
+                    <span class="n">metric_results</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric_values</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_estimates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">custom_name</span><span class="p">,</span> <span class="n">custom_func</span> <span class="ow">in</span> <span class="n">custom_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">custom_per_source</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="n">true_locations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">locations</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">true_locations</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+                        <span class="n">custom_value</span> <span class="o">=</span> <span class="n">custom_func</span><span class="p">(</span><span class="n">all_estimates</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">true_locations</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                        <span class="n">custom_per_source</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">custom_value</span><span class="p">)</span>
+                    <span class="n">metric_results</span><span class="p">[</span><span class="n">custom_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">custom_per_source</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">custom_name</span> <span class="ow">in</span> <span class="n">custom_metrics</span><span class="p">:</span>
+                    <span class="n">metric_results</span><span class="p">[</span><span class="n">custom_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+
+            <span class="c1"># Calculate total estimator time as sum of all run times</span>
+            <span class="n">estimator_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_run_times</span><span class="p">)</span>
+
+            <span class="n">sample_estimates</span> <span class="o">=</span> <span class="n">all_estimates</span> <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_sample_estimates</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_estimates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">add_estimator_result</span><span class="p">(</span><span class="n">estimator_name</span><span class="p">,</span> <span class="n">metric_results</span><span class="p">,</span> <span class="n">sample_estimates</span><span class="p">,</span> <span class="n">estimator_time</span><span class="p">)</span>
+        <span class="n">tbar</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">computation_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="evaluate_performance">
+<a class="viewcode-back" href="../../../references/doatools.performance.evaluator.html#doatools.performance.evaluator.evaluate_performance">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluate_performance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">n_snapshots</span><span class="p">,</span> <span class="n">n_monte_carlo</span><span class="p">,</span>
+                         <span class="n">estimators</span><span class="p">,</span> <span class="n">crb_types</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">custom_metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">save_sample_estimates</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performance evaluation function for quickly assessing DOA algorithm performance.</span>
+<span class="sd">    </span>
+<span class="sd">    This function is a simplified interface for the DOAPerformanceEvaluator class,</span>
+<span class="sd">    designed for easy direct use by users.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        array (~doatools.model.arrays.ArrayDesign): Array design.</span>
+<span class="sd">        sources (~doatools.model.sources.FarField1DSourcePlacement): Source locations.</span>
+<span class="sd">        snr (float): Signal-to-noise ratio in dB.</span>
+<span class="sd">        n_snapshots (int): Number of snapshots.</span>
+<span class="sd">        n_monte_carlo (int): Number of Monte Carlo simulations.</span>
+<span class="sd">        estimators (dict or list or object): DOA estimator instance, list of instances, or dictionary.</span>
+<span class="sd">        crb_types (list or str, optional): List of CRLB types or a single type.</span>
+<span class="sd">            Possible values: &#39;sto&#39; (stochastic CRB), &#39;det&#39; (deterministic CRB), </span>
+<span class="sd">            &#39;stouc&#39; (stochastic uncorrelated CRB). Default value is [&#39;sto&#39;].\n        metrics (list or str, optional): List of evaluation metrics or a single metric.</span>
+<span class="sd">            Possible values: &#39;bias&#39; (bias), &#39;mae&#39; (mean absolute error), </span>
+<span class="sd">            &#39;mse&#39; (mean squared error), &#39;rmse&#39; (root mean squared error).</span>
+<span class="sd">            Default value is [&#39;mse&#39;].\n        custom_metrics (dict, optional): Dictionary of custom evaluation metrics.</span>
+<span class="sd">        metrics</span>
+<span class="sd">        custom_metrics</span>
+<span class="sd">        save_sample_estimates (bool, optional): Whether to save sample estimates.</span>
+<span class="sd">            Default value is False.</span>
+<span class="sd">        verbose (int, optional): Verbosity level. 0 for silent, 1 for progress bar.</span>
+<span class="sd">        n_jobs (int, optional): Number of parallel jobs to run. Default is 1 (no parallelism).</span>
+<span class="sd">            If -1, use all available CPUs.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        PerformanceResult: Evaluation result object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">evaluator</span> <span class="o">=</span> <span class="n">DOAPerformanceEvaluator</span><span class="p">(</span>
+        <span class="n">array</span><span class="o">=</span><span class="n">array</span><span class="p">,</span>
+        <span class="n">sources</span><span class="o">=</span><span class="n">sources</span><span class="p">,</span>
+        <span class="n">snr</span><span class="o">=</span><span class="n">snr</span><span class="p">,</span>
+        <span class="n">n_snapshots</span><span class="o">=</span><span class="n">n_snapshots</span><span class="p">,</span>
+        <span class="n">n_monte_carlo</span><span class="o">=</span><span class="n">n_monte_carlo</span><span class="p">,</span>
+        <span class="n">estimators</span><span class="o">=</span><span class="n">estimators</span><span class="p">,</span>
+        <span class="n">crb_types</span><span class="o">=</span><span class="n">crb_types</span><span class="p">,</span>
+        <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
+        <span class="n">save_sample_estimates</span><span class="o">=</span><span class="n">save_sample_estimates</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">custom_metrics</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.model.html">Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Xiantao Heng.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

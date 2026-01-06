@@ -6,3 +6,4 @@ Performance analysis
 
     doatools.performance.mse
     doatools.performance.crb
+    doatools.performance.evaluator

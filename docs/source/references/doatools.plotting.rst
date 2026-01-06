@@ -6,3 +6,4 @@ Plotting
 
     doatools.plotting.plot_spectrum
     doatools.plotting.plot_array
+    doatools.plotting.plot_performance
