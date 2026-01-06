@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>doatools.plotting.plot_performance &#8212; DoaTools 0.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=5ca9cceb" />
+    <script src="../../../_static/documentation_options.js?v=e259d695"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for doatools.plotting.plot_performance</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># Global configuration that allows user customization</span>
+<span class="n">_GLOBAL_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># Mapping between DOA estimation methods and their colors/markers</span>
+    <span class="s1">&#39;doa_method_styles&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="c1"># Subspace methods</span>
+        <span class="s1">&#39;RootMUSIC&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;x&#39;</span><span class="p">},</span>
+        <span class="s1">&#39;MUSIC&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;o&#39;</span><span class="p">},</span>
+        <span class="s1">&#39;ESPRIT&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">},</span>
+        <span class="s1">&#39;MinNorm&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;purple&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;*&#39;</span><span class="p">},</span>
+        <span class="c1"># Beamforming methods</span>
+        <span class="s1">&#39;MVDR&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;^&#39;</span><span class="p">},</span>
+        <span class="s1">&#39;Bartlett&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;v&#39;</span><span class="p">},</span>
+        <span class="c1"># Other methods</span>
+        <span class="s1">&#39;Interferometer&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&#39;</span><span class="p">},</span>
+        <span class="s1">&#39;CoarrayACMBuilder&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="s1">&#39;marker&#39;</span><span class="p">:</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">}</span>
+    <span class="p">},</span>
+    <span class="c1"># Default color cycle for unknown methods</span>
+    <span class="s1">&#39;default_colors&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="s1">&#39;purple&#39;</span><span class="p">,</span> <span class="s1">&#39;brown&#39;</span><span class="p">],</span>
+    <span class="c1"># Default marker cycle for unknown methods</span>
+    <span class="s1">&#39;default_markers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="s1">&#39;^&#39;</span><span class="p">,</span> <span class="s1">&#39;v&#39;</span><span class="p">,</span> <span class="s1">&#39;&lt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># Set global font and legend configuration</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;font.family&#39;</span><span class="p">:</span> <span class="s1">&#39;Times New Roman&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;font.sans-serif&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Times New Roman&#39;</span><span class="p">,</span> <span class="s1">&#39;Arial&#39;</span><span class="p">,</span> <span class="s1">&#39;DejaVu Sans&#39;</span><span class="p">],</span>
+<span class="p">})</span>
+
+
+<div class="viewcode-block" id="get_global_config">
+<a class="viewcode-back" href="../../../references/doatools.plotting.plot_performance.html#doatools.plotting.plot_performance.get_global_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_global_config</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gets the global configuration dictionary.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: The global configuration dictionary, which can be modified directly to globally change plotting styles.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_GLOBAL_CONFIG</span></div>
+
+
+
+<div class="viewcode-block" id="set_doa_method_style">
+<a class="viewcode-back" href="../../../references/doatools.plotting.plot_performance.html#doatools.plotting.plot_performance.set_doa_method_style">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_doa_method_style</span><span class="p">(</span><span class="n">method_name</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sets the style for a specific DOA estimation method.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        method_name (str): Name of the DOA estimation method.</span>
+<span class="sd">        color (str, optional): Color string, e.g., &#39;b&#39;, &#39;g&#39;, &#39;r&#39;.</span>
+<span class="sd">        marker (str, optional): Marker string, e.g., &#39;x&#39;, &#39;o&#39;, &#39;s&#39;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">method_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;doa_method_styles&#39;</span><span class="p">]:</span>
+        <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;doa_method_styles&#39;</span><span class="p">][</span><span class="n">method_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;doa_method_styles&#39;</span><span class="p">][</span><span class="n">method_name</span><span class="p">][</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span>
+    <span class="k">if</span> <span class="n">marker</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;doa_method_styles&#39;</span><span class="p">][</span><span class="n">method_name</span><span class="p">][</span><span class="s1">&#39;marker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">marker</span></div>
+
+
+
+<div class="viewcode-block" id="get_doa_method_style">
+<a class="viewcode-back" href="../../../references/doatools.plotting.plot_performance.html#doatools.plotting.plot_performance.get_doa_method_style">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_doa_method_style</span><span class="p">(</span><span class="n">method_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gets the style for a specific DOA estimation method.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        method_name (str): Name of the DOA estimation method.</span>
+<span class="sd">        index (int, optional): Index used to get style from default lists when the method name is not in the configuration.</span>
+<span class="sd">            Default value is 0.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (color, marker) tuple.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check if it&#39;s a known method</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;doa_method_styles&#39;</span><span class="p">]</span>
+    <span class="n">default_colors</span> <span class="o">=</span> <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;default_colors&#39;</span><span class="p">]</span>
+    <span class="n">default_markers</span> <span class="o">=</span> <span class="n">_GLOBAL_CONFIG</span><span class="p">[</span><span class="s1">&#39;default_markers&#39;</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">style</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">method_name</span><span class="p">]</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">style</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;color&#39;</span><span class="p">,</span> <span class="n">default_colors</span><span class="p">[</span><span class="n">index</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">default_colors</span><span class="p">)])</span>
+        <span class="n">marker</span> <span class="o">=</span> <span class="n">style</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;marker&#39;</span><span class="p">,</span> <span class="n">default_markers</span><span class="p">[</span><span class="n">index</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">default_markers</span><span class="p">)])</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">marker</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Unknown method, use default style</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">default_colors</span><span class="p">[</span><span class="n">index</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">default_colors</span><span class="p">)],</span>
+            <span class="n">default_markers</span><span class="p">[</span><span class="n">index</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">default_markers</span><span class="p">)]</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="plot_metric_vs_parameter">
+<a class="viewcode-back" href="../../../references/doatools.plotting.plot_performance.html#doatools.plotting.plot_performance.plot_metric_vs_parameter">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_metric_vs_parameter</span><span class="p">(</span><span class="n">parameter_values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+                            <span class="n">parameter_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parameter_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> 
+                            <span class="n">metric_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">show_crb</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> 
+                            <span class="n">crb_values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">crb_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;CRB&#39;</span><span class="p">,</span>
+                            <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plots a line graph of metric values versus parameter values.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        parameter_values (np.ndarray): Array of parameter values.</span>
+<span class="sd">        results (Dict[str, np.ndarray]): Dictionary of metric results for different algorithms, </span>
+<span class="sd">            where keys are algorithm names and values are corresponding metric value arrays.</span>
+<span class="sd">        parameter_name (str): Parameter name, used for the x-axis label.</span>
+<span class="sd">        metric_name (str): Metric name, used for the y-axis label and legend.</span>
+<span class="sd">        parameter_unit (str, optional): Parameter unit, used for the x-axis label. Default is an empty string.</span>
+<span class="sd">        metric_unit (str, optional): Metric unit, used for the y-axis label. Default is an empty string.</span>
+<span class="sd">        show_crb (bool, optional): Whether to show the CRB curve. Default value is False.</span>
+<span class="sd">        crb_values (Optional[np.ndarray], optional): Array of CRB values. Default value is None.</span>
+<span class="sd">        crb_label (str, optional): Legend label for the CRB curve. Default value is &#39;CRB&#39;.</span>
+<span class="sd">        ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.</span>
+<span class="sd">            Default value is None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Create or use the provided axes</span>
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">show_plot</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">show_plot</span> <span class="o">=</span> <span class="kc">False</span>
+    
+    <span class="c1"># Set x-axis label</span>
+    <span class="n">xlabel</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">parameter_name</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">if</span> <span class="n">parameter_unit</span><span class="p">:</span>
+        <span class="n">xlabel</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39; (</span><span class="si">{</span><span class="n">parameter_unit</span><span class="si">}</span><span class="s1">)&#39;</span>
+    
+    <span class="c1"># Set y-axis label</span>
+    <span class="n">ylabel</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">metric_name</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">if</span> <span class="n">metric_unit</span><span class="p">:</span>
+        <span class="n">ylabel</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39; (</span><span class="si">{</span><span class="n">metric_unit</span><span class="si">}</span><span class="s1">)&#39;</span>
+    
+    <span class="c1"># Plot CRB curve if needed</span>
+    <span class="k">if</span> <span class="n">show_crb</span> <span class="ow">and</span> <span class="n">crb_values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">parameter_values</span><span class="p">,</span> <span class="n">crb_values</span><span class="p">,</span> <span class="s1">&#39;--k&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">crb_label</span><span class="p">)</span>
+    
+    <span class="c1"># Plot each algorithm&#39;s curve, using colors and markers corresponding to DOA methods</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="n">metric_values</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="c1"># Extract method name from algorithm name (remove trailing numbers)</span>
+        <span class="n">method_name</span> <span class="o">=</span> <span class="n">algorithm</span>
+        <span class="c1"># Handle cases like &#39;RootMUSIC1D&#39;</span>
+        <span class="k">if</span> <span class="n">method_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;1D&#39;</span><span class="p">):</span>
+            <span class="n">method_name</span> <span class="o">=</span> <span class="n">method_name</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c1"># Handle cases like &#39;CoarrayACMBuilder1D&#39;</span>
+        <span class="k">if</span> <span class="n">method_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;Builder&#39;</span><span class="p">):</span>
+            <span class="n">method_name</span> <span class="o">=</span> <span class="n">method_name</span><span class="p">[:</span><span class="o">-</span><span class="mi">7</span><span class="p">]</span>
+        
+        <span class="c1"># Get corresponding color and marker</span>
+        <span class="n">color</span><span class="p">,</span> <span class="n">marker</span> <span class="o">=</span> <span class="n">get_doa_method_style</span><span class="p">(</span><span class="n">method_name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">parameter_values</span><span class="p">,</span> <span class="n">metric_values</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;-</span><span class="si">{</span><span class="n">marker</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> 
+                   <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">algorithm</span><span class="p">)</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">ncol</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="plot_scatter_estimates">
+<a class="viewcode-back" href="../../../references/doatools.plotting.plot_performance.html#doatools.plotting.plot_performance.plot_scatter_estimates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_scatter_estimates</span><span class="p">(</span><span class="n">true_angles</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">estimates</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                          <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">angle_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;rad&#39;</span><span class="p">,</span>
+                          <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plots a scatter plot of true angles versus estimated angles.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        true_angles (np.ndarray): Array of true angles, with shape (n_monte_carlo, n_sources) or (n_sources,).</span>
+<span class="sd">        estimates (np.ndarray): Array of estimated angles, with shape (n_monte_carlo, n_sources).</span>
+<span class="sd">        algorithm_name (str): Algorithm name, used for the title.</span>
+<span class="sd">        angle_unit (str, optional): Angle unit, &#39;rad&#39; or &#39;deg&#39;. Default value is &#39;rad&#39;.</span>
+<span class="sd">        ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.</span>
+<span class="sd">            Default value is None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Ensure true_angles has the same shape as estimates</span>
+    <span class="k">if</span> <span class="n">true_angles</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">true_angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">true_angles</span><span class="p">,</span> <span class="p">(</span><span class="n">estimates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+    
+    <span class="c1"># Convert to degrees if needed</span>
+    <span class="k">if</span> <span class="n">angle_unit</span> <span class="o">==</span> <span class="s1">&#39;deg&#39;</span><span class="p">:</span>
+        <span class="n">true_angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">true_angles</span><span class="p">)</span>
+        <span class="n">estimates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">estimates</span><span class="p">)</span>
+        <span class="n">angle_label</span> <span class="o">=</span> <span class="s1">&#39;Angle (degrees)&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">angle_label</span> <span class="o">=</span> <span class="s1">&#39;Angle (radians)&#39;</span>
+    
+    <span class="n">n_sources</span> <span class="o">=</span> <span class="n">true_angles</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1"># Create or use the provided axes</span>
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">show_plot</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">show_plot</span> <span class="o">=</span> <span class="kc">False</span>
+    
+    <span class="c1"># Plot scatter points for each source</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_sources</span><span class="p">):</span>
+        <span class="c1"># For scatter plots, we use default styles corresponding to source indices</span>
+        <span class="c1"># since this is for different sources of a single algorithm</span>
+        <span class="n">color</span><span class="p">,</span> <span class="n">marker</span> <span class="o">=</span> <span class="n">get_doa_method_style</span><span class="p">(</span><span class="n">algorithm_name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">true_angles</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">estimates</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="n">marker</span><span class="p">,</span> 
+                   <span class="n">s</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Source </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Plot the ideal line (y = x)</span>
+    <span class="n">min_val</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">true_angles</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">estimates</span><span class="p">))</span>
+    <span class="n">max_val</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">true_angles</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">estimates</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="p">],</span> <span class="p">[</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="p">],</span> <span class="s1">&#39;--k&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Ideal&#39;</span><span class="p">)</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;True </span><span class="si">{</span><span class="n">angle_label</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Estimated </span><span class="si">{</span><span class="n">angle_label</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">ncol</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="plot_cdf">
+<a class="viewcode-back" href="../../../references/doatools.plotting.plot_performance.html#doatools.plotting.plot_performance.plot_cdf">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_cdf</span><span class="p">(</span><span class="n">estimates</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span> <span class="n">true_angles</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+             <span class="n">algorithm_name</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;Error&#39;</span><span class="p">,</span> 
+             <span class="n">metric_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;rad&#39;</span><span class="p">,</span> <span class="n">metric_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;absolute&#39;</span><span class="p">,</span>
+             <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plots the CDF (Cumulative Distribution Function) of estimation errors.</span>
+<span class="sd">    </span>
+<span class="sd">    Supports two modes:</span>
+<span class="sd">    1. Single algorithm mode: Plots the CDF for a single algorithm</span>
+<span class="sd">    2. Multi-algorithm comparison mode: Plots CDF comparisons for multiple algorithms</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        estimates (Union[np.ndarray, Dict[str, np.ndarray]]): </span>
+<span class="sd">            - Single algorithm: Array of estimated angles with shape (n_monte_carlo, n_sources).</span>
+<span class="sd">            - Multi-algorithm comparison: Dictionary where keys are algorithm names and values are corresponding estimated angle arrays.</span>
+<span class="sd">        true_angles (np.ndarray): Array of true angles with shape (n_monte_carlo, n_sources) or (n_sources,).</span>
+<span class="sd">        algorithm_name (Union[str, None], optional): </span>
+<span class="sd">            - Single algorithm: Algorithm name, used for the title and legend.</span>
+<span class="sd">            - Multi-algorithm comparison: None, this parameter is ignored.</span>
+<span class="sd">            Default value is None.</span>
+<span class="sd">        metric_name (str, optional): Error metric name, used for the x-axis label. Default value is &#39;Error&#39;.</span>
+<span class="sd">        metric_unit (str, optional): Error unit, used for the x-axis label. Default value is &#39;rad&#39;.</span>
+<span class="sd">        metric_type (str, optional): Error type, with options:</span>
+<span class="sd">            - &#39;absolute&#39;: Absolute error</span>
+<span class="sd">            - &#39;rms&#39;: Root Mean Square error</span>
+<span class="sd">            - &#39;mae&#39;: Mean Absolute Error</span>
+<span class="sd">            Default value is &#39;absolute&#39;.</span>
+<span class="sd">        ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.</span>
+<span class="sd">            Default value is None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Create or use the provided axes</span>
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">show_plot</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">show_plot</span> <span class="o">=</span> <span class="kc">False</span>
+    
+    <span class="c1"># Ensure true_angles has the correct shape</span>
+    <span class="k">if</span> <span class="n">true_angles</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Single algorithm case</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">true_angles_repeated</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">true_angles</span><span class="p">,</span> <span class="p">(</span><span class="n">estimates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># Multi-algorithm case, get shape from first algorithm</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">first_alg</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">estimates</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+            <span class="n">true_angles_repeated</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">true_angles</span><span class="p">,</span> <span class="p">(</span><span class="n">estimates</span><span class="p">[</span><span class="n">first_alg</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">true_angles_repeated</span> <span class="o">=</span> <span class="n">true_angles</span>
+    
+    <span class="c1"># Handle single algorithm case</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">algorithm_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">algorithm_name</span> <span class="o">=</span> <span class="s1">&#39;Algorithm&#39;</span>
+        
+        <span class="c1"># Calculate errors</span>
+        <span class="k">if</span> <span class="n">metric_type</span> <span class="o">==</span> <span class="s1">&#39;absolute&#39;</span><span class="p">:</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">estimates</span> <span class="o">-</span> <span class="n">true_angles_repeated</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">metric_type</span> <span class="o">==</span> <span class="s1">&#39;rms&#39;</span><span class="p">:</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">estimates</span> <span class="o">-</span> <span class="n">true_angles_repeated</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">errors</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>  <span class="c1"># Convert to (n_monte_carlo, 1)</span>
+        <span class="k">elif</span> <span class="n">metric_type</span> <span class="o">==</span> <span class="s1">&#39;mae&#39;</span><span class="p">:</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">estimates</span> <span class="o">-</span> <span class="n">true_angles_repeated</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">errors</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>  <span class="c1"># Convert to (n_monte_carlo, 1)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown metric_type: </span><span class="si">{</span><span class="n">metric_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Convert to degrees if needed</span>
+        <span class="k">if</span> <span class="n">metric_unit</span> <span class="o">==</span> <span class="s1">&#39;deg&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">metric_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;rms&#39;</span><span class="p">,</span> <span class="s1">&#39;mae&#39;</span><span class="p">]:</span>
+                <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+        
+        <span class="n">n_sources</span> <span class="o">=</span> <span class="n">errors</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+        <span class="c1"># Plot CDF for each source</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_sources</span><span class="p">):</span>
+            <span class="c1"># Get corresponding color and marker</span>
+            <span class="n">color</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_doa_method_style</span><span class="p">(</span><span class="n">algorithm_name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="c1"># Extract errors for the i-th source</span>
+            <span class="n">source_errors</span> <span class="o">=</span> <span class="n">errors</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="c1"># Sort errors</span>
+            <span class="n">sorted_errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">source_errors</span><span class="p">)</span>
+            <span class="c1"># Calculate CDF values</span>
+            <span class="n">cdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">)</span>
+            <span class="c1"># Plot CDF</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">,</span> <span class="n">cdf</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">algorithm_name</span><span class="si">}</span><span class="s1"> - Source </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="c1"># Handle multi-algorithm comparison case</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="c1"># Iterate through each algorithm</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">alg_name</span><span class="p">,</span> <span class="n">alg_estimates</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">estimates</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="c1"># Ensure true angles have the same shape as current algorithm&#39;s estimates</span>
+            <span class="k">if</span> <span class="n">true_angles</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">current_true_angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">true_angles</span><span class="p">,</span> <span class="p">(</span><span class="n">alg_estimates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">current_true_angles</span> <span class="o">=</span> <span class="n">true_angles</span>
+            
+            <span class="c1"># Calculate errors</span>
+            <span class="k">if</span> <span class="n">metric_type</span> <span class="o">==</span> <span class="s1">&#39;absolute&#39;</span><span class="p">:</span>
+                <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">alg_estimates</span> <span class="o">-</span> <span class="n">current_true_angles</span><span class="p">)</span>
+                <span class="c1"># Handle each source individually</span>
+                <span class="n">n_sources</span> <span class="o">=</span> <span class="n">errors</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_sources</span><span class="p">):</span>
+                    <span class="n">source_errors</span> <span class="o">=</span> <span class="n">errors</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span>
+                    <span class="n">sorted_errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">source_errors</span><span class="p">)</span>
+                    <span class="n">cdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">)</span>
+                    <span class="n">color</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_doa_method_style</span><span class="p">(</span><span class="n">alg_name</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">,</span> <span class="n">cdf</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+                            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">alg_name</span><span class="si">}</span><span class="s1"> - Source </span><span class="si">{</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;rms&#39;</span><span class="p">,</span> <span class="s1">&#39;mae&#39;</span><span class="p">]:</span>
+                <span class="c1"># Calculate overall metric for each Monte Carlo sample</span>
+                <span class="k">if</span> <span class="n">metric_type</span> <span class="o">==</span> <span class="s1">&#39;rms&#39;</span><span class="p">:</span>
+                    <span class="c1"># RMS for each sample (root mean square of all sources)</span>
+                    <span class="n">sample_errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">alg_estimates</span> <span class="o">-</span> <span class="n">current_true_angles</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>  <span class="c1"># mae</span>
+                    <span class="c1"># MAE for each sample (mean absolute error of all sources)</span>
+                    <span class="n">sample_errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">alg_estimates</span> <span class="o">-</span> <span class="n">current_true_angles</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                
+                <span class="c1"># Convert to degrees if needed</span>
+                <span class="k">if</span> <span class="n">metric_unit</span> <span class="o">==</span> <span class="s1">&#39;deg&#39;</span><span class="p">:</span>
+                    <span class="n">sample_errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">sample_errors</span><span class="p">)</span>
+                
+                <span class="c1"># Sort errors</span>
+                <span class="n">sorted_errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">sample_errors</span><span class="p">)</span>
+                <span class="c1"># Calculate CDF values</span>
+                <span class="n">cdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">)</span>
+                <span class="c1"># Get corresponding color and marker</span>
+                <span class="n">color</span><span class="p">,</span> <span class="n">marker</span> <span class="o">=</span> <span class="n">get_doa_method_style</span><span class="p">(</span><span class="n">alg_name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                <span class="c1"># Plot CDF</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">sorted_errors</span><span class="p">,</span> <span class="n">cdf</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+                        <span class="n">label</span><span class="o">=</span><span class="n">alg_name</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown metric_type: </span><span class="si">{</span><span class="n">metric_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;estimates must be either np.ndarray or dict, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">estimates</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">metric_name</span><span class="si">}</span><span class="s1"> (</span><span class="si">{</span><span class="n">metric_unit</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;CDF&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">DoaTools</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.model.html">Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.performance.html">Performance analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references/doatools.misc.html">Miscellaneous</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Xiantao Heng.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
