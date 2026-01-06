@@ -87,51 +87,60 @@ pip install git+https://github.com/hengxt/doatools.git
 import numpy as np
 import doatools.model as model
 import doatools.estimation as estimation
-
-# 创建阵列
+import doatools.plotting as plottool
+# Create array
 wavelength = 1.0
 d0 = wavelength / 2
 ula = model.UniformLinearArray(12, d0)
-
-# 创建信号源
-sources = model.FarField1DSourcePlacement(np.linspace(-np.pi/4, np.pi/4, 3))
-
-# 生成观测数据
+# Create sources
+sources = model.FarField1DSourcePlacement(np.linspace(-np.pi/5, np.pi/7, 3))
+# Generate observation data
 source_signal = model.ComplexStochasticSignal(sources.size, 1.0)
 noise_signal = model.ComplexStochasticSignal(ula.size, 0.1)
 _, R = model.get_narrowband_snapshots(ula, sources, wavelength, 
-                                       source_signal, noise_signal, 100,
+                                       source_signal, noise_signal, 128,
                                        return_covariance=True)
-
-# 使用MUSIC算法估计DOA
+# Estimate DOA using MUSIC algorithm
 grid = estimation.FarField1DSearchGrid()
 music = estimation.MUSIC(ula, wavelength, grid)
 resolved, estimates, spectrum = music.estimate(R, sources.size, return_spectrum=True)
 print(f"MUSIC Estimates: {np.rad2deg(estimates.locations)}")
 print(f"Ground truth: {np.rad2deg(sources.locations)}")
+plottool.plot_spectrum({'MUSIC': spectrum}, grid, ground_truth=sources, use_log_scale=True)
 ```
 
 ### 性能评估示例
 
 ```python
+import numpy as np
+import doatools.model as model
+import doatools.estimation as estimation
 from doatools.performance import evaluate_performance
-
-# 定义估计器
+# Create array
+wavelength = 1.0
+d0 = wavelength / 2
+ula = model.UniformLinearArray(12, d0)
+# Define estimator
 root_music = estimation.RootMUSIC1D(wavelength)
-
-# 运行性能评估
+# Generate observation data
+sources = model.FarField1DSourcePlacement(np.linspace(-np.pi/5, np.pi/7, 3))
+source_signal = model.ComplexStochasticSignal(sources.size, 1.0)
+noise_signal = model.ComplexStochasticSignal(ula.size, 0.1)
+_, R = model.get_narrowband_snapshots(ula, sources, wavelength, 
+                                       source_signal, noise_signal, 128,
+                                       return_covariance=True)
+# Run performance evaluation
 result = evaluate_performance(
     array=ula,
     sources=sources,
-    snr=10,           # 信噪比 10 dB
-    n_snapshots=100,  # 快拍数
-    n_monte_carlo=100, # Monte Carlo次数
-    estimators=root_music,
+    snr=10,
+    n_snapshots=100,
+    n_monte_carlo=100,
+    estimators={'Root MUSIC': root_music},
     crb_types=['sto'],
     metrics=['mse', 'rmse'],
     verbose=1
 )
-
 print(result)
 ```
 

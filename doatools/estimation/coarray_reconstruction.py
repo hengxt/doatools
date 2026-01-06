@@ -175,9 +175,7 @@ class SPAEstimator(CovarianceReconstructionBase):
         **kwargs: Other keyword arguments.
             
     References:
-        [1] X. Yuan and A. Nehorai, "Sparse Arrays for DOA Estimation: 
-        From Coarray Perspective," IEEE Transactions on Signal Processing, 
-        vol. 66, no. 4, pp. 939-953, Feb. 2018.
+        [1] Z. Yang, L. Xie, and C. Zhang, "A Discretization-Free Sparse and Parametric Approach for Linear Array Signal Processing," *IEEE Transactions on Signal Processing*, vol. 62, no. 19, pp. 4959-4973, Oct. 2014.
     """
 
     def __init__(self, array, wavelength, lambda_noise: float = 0, doa_estimator=None, search_grid=None, **kwargs):
@@ -254,9 +252,8 @@ class ANMEstimator(CovarianceReconstructionBase):
         **kwargs: Other keyword arguments.
             
     References:
-        [1] Q. Wan, et al., "Augmented Covariance Matrix Reconstruction for 
-        Sparse Arrays via Nuclear-norm Minimization," IEEE Transactions on 
-        Signal Processing, vol. 67, no. 11, pp. 2896-2910, Jun. 2019.
+        [1] C. Zhou, Y. Gu, X. Fan, Z. Shi, G. Mao, and Y. D. Zhang, "Direction-of-Arrival Estimation for Coprime Array via Virtual Array Interpolation," *IEEE Transactions on Signal Processing*, vol. 66, no. 22, pp. 5956-5971, Nov. 2018.
+        [2] X. Wu, W.-P. Zhu, and J. Yan, "A Toeplitz Covariance Matrix Reconstruction Approach for Direction-of-Arrival Estimation," *IEEE Transactions on Vehicular Technology*, vol. 66, no. 9, pp. 8223-8237, Sept. 2017.
     """
 
     def __init__(self, array, wavelength, zeta: float = 0.0, doa_estimator=None, search_grid=None, **kwargs):
@@ -319,10 +316,7 @@ class StructCovMLEEstimator(CovarianceReconstructionBase):
         **kwargs: Other keyword arguments.
             
     References:
-        [1] R. R. Pote and B. D. Rao, "Maximum Likelihood-Based Gridless DoA 
-        Estimation Using Structured Covariance Matrix Recovery and SBL With Grid 
-        Refinement," in IEEE Transactions on Signal Processing, vol. 71, 
-        pp. 802-815, 2023.
+        [1] R. R. Pote and B. D. Rao, "Maximum Likelihood-Based Gridless DoA Estimation Using Structured Covariance Matrix Recovery and SBL With Grid Refinement," *IEEE Transactions on Signal Processing*, vol. 71, pp. 802-815, 2023.
     """
 
     def __init__(self, array, wavelength, epsilon: float = 1e-4,
@@ -410,9 +404,7 @@ class WassersteinEstimator(CovarianceReconstructionBase):
         **kwargs: Other keyword arguments.
             
     References:
-        [1] M. Wang, Z. Zhang and A. Nehorai, "Grid-Less DOA Estimation Using 
-        Sparse Linear Arrays Based on Wasserstein Distance," in IEEE Signal 
-        Processing Letters, vol. 26, no. 6, pp. 838-842, June 2019.
+        [1] M. Wang, Z. Zhang, and A. Nehorai, "Grid-Less DOA Estimation Using Sparse Linear Arrays Based on Wasserstein Distance," *IEEE Signal Processing Letters*, vol. 26, no. 6, pp. 838-842, June 2019.
     """
 
     def __init__(self, array, wavelength, use_gradient: bool = False,

@@ -78,9 +78,9 @@ class PerformanceResult:
                     unit = "rad²"
                 else:
                     unit = ""
-                s += f"    {metric.upper():<15}: {value:12.6e} {unit}\n"
+                s += f"    {metric.upper():<25}: {value:12.6e} {unit}\n"
             # Add estimator computation time
-            s += f"    {'COMPUTATION TIME':<15}: {self.estimator_times[estimator_name]:12.3f} seconds\n"
+            s += f"    {'AVERAGE COMPUTATION TIME':<25}: {self.estimator_times[estimator_name]:12.6e} seconds\n"
         s += "\n"
         return s
 
