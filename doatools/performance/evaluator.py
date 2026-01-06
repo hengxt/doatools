@@ -1,3 +1,4 @@
+import inspect
 import multiprocessing
 import time
 import numpy as np
@@ -6,6 +7,7 @@ from .crb import crb_det_farfield_1d, crb_sto_farfield_1d, crb_stouc_farfield_1d
 from ..model.arrays import ArrayDesign
 from ..model.signals import ComplexStochasticSignal
 from ..model.sources import FarField1DSourcePlacement
+from ..model import get_narrowband_snapshots
 
 
 class PerformanceResult:
@@ -100,41 +102,30 @@ def _single_monte_carlo_run(estimator, array, sources, n_snapshots, power_source
         run_id: The run identifier (unused, but required for parallel processing).
         
     Returns:
-        numpy.ndarray or None: The estimated locations if resolved, otherwise None.
+        tuple: (estimated_locations, run_time) where estimated_locations is numpy.ndarray if resolved, otherwise None,
+               and run_time is the time taken for this run in seconds.
     """
+    source_signal = ComplexStochasticSignal(sources.size, power_source)
+    noise_signal = ComplexStochasticSignal(array.size, power_noise)
+    y, Ry = get_narrowband_snapshots(
+        array, sources, estimator._wavelength, source_signal, noise_signal,
+        n_snapshots, return_covariance=True
+    ) 
 
-    # Generate new signals for each run to ensure randomness
-    # Note: We avoid using ComplexStochasticSignal's lambda functions by implementing
-    # the signal generation directly here
-    def generate_signal(dim, power, n):
-        """Generates a complex Gaussian signal with the given power."""
-        from ..utils.math import randcn
-        return np.sqrt(power) * randcn((dim, n))
-
-    S = generate_signal(sources.size, power_source, n_snapshots)
-    N = generate_signal(array.size, power_noise, n_snapshots)
-
-    A = array.steering_matrix(sources, estimator._wavelength)
-    Y = A @ S + N
-
-    Ry = (Y @ Y.conj().T) / n_snapshots
-
+    run_start_time = time.time()
     # execute DOA estimation
-    # check if the estimate method accepts d0 parameter
-    import inspect
     sig = inspect.signature(estimator.estimate)
     params = list(sig.parameters.keys())
     if len(params) >= 4 or 'd0' in params:
-        # Method Accepts d0 Parameter, such as RootMUSIC1D
         resolved, estimates = estimator.estimate(Ry, sources.size, array.d0[0])
     else:
-        # Method Does Not Accept d0 Parameter, such as MUSIC
         resolved, estimates = estimator.estimate(Ry, sources.size)
+    run_time = time.time() - run_start_time
 
     if resolved:
-        return estimates.locations
+        return estimates.locations, run_time
     else:
-        return None
+        return None, run_time
 
 
 class DOAPerformanceEvaluator:
@@ -322,9 +313,7 @@ class DOAPerformanceEvaluator:
         for estimator_name, estimator in self.estimators.items():
             metric_results = {}
             all_estimates = []
-
-            # Start timer for this estimator
-            estimator_start_time = time.time()
+            all_run_times = []
 
             if n_processes > 1:
                 # Use parallel processing
@@ -334,16 +323,17 @@ class DOAPerformanceEvaluator:
                                   self.power_source, self.power_noise, i) for i in range(self.n_monte_carlo)]
                     # Execute in parallel
                     results = pool.starmap(_single_monte_carlo_run, args_list)
-                    # Collect valid results
-                    for res in results:
+                    # Collect valid results and run times
+                    for res, run_time in results:
+                        all_run_times.append(run_time)
                         if res is not None:
                             all_estimates.append(res)
                         tbar.update(1)
             else:
-                # Use sequential processing
                 for _ in range(self.n_monte_carlo):
-                    res = _single_monte_carlo_run(estimator, self.array, self.sources, self.n_snapshots,
-                                                  self.power_source, self.power_noise, 0)
+                    res, run_time = _single_monte_carlo_run(estimator, self.array, self.sources, self.n_snapshots,
+                                                          self.power_source, self.power_noise, 0)
+                    all_run_times.append(run_time)
                     if res is not None:
                         all_estimates.append(res)
                     tbar.update(1)
@@ -394,7 +384,8 @@ class DOAPerformanceEvaluator:
                 for custom_name in custom_metrics:
                     metric_results[custom_name] = np.pi
 
-            estimator_time = time.time() - estimator_start_time
+            # Calculate total estimator time as sum of all run times
+            estimator_time = np.mean(all_run_times)
 
             sample_estimates = all_estimates if (self.save_sample_estimates and len(all_estimates) > 0) else None
             result.add_estimator_result(estimator_name, metric_results, sample_estimates, estimator_time)
