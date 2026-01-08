@@ -105,6 +105,7 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
         crb_label (str, optional): Legend label for the CRB curve. Default value is 'CRB'.
         ax (Optional[plt.Axes], optional): Externally provided matplotlib axes object. If None, a new figure will be created.
             Default value is None.
+        show_90_percentile (bool, optional): Whether to show the 90% percentile error line. Default value is False.
     """
     # Create or use the provided axes
     if ax is None:
@@ -217,7 +218,7 @@ def plot_scatter_estimates(true_angles: np.ndarray, estimates: np.ndarray,
 def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: np.ndarray, 
              algorithm_name: Union[str, None] = None, metric_name: str = 'Error', 
              metric_unit: str = 'rad', metric_type: str = 'absolute',
-             ax: Optional[plt.Axes] = None):
+             ax: Optional[plt.Axes] = None, show_90_percentile: bool = False):
     """Plots the CDF (Cumulative Distribution Function) of estimation errors.
     
     Supports two modes:
@@ -262,6 +263,9 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
     else:
         true_angles_repeated = true_angles
     
+    # Calculate all errors first to determine 90% percentile
+    all_errors = []
+    
     # Handle single algorithm case
     if isinstance(estimates, np.ndarray):
         if algorithm_name is None:
@@ -285,6 +289,9 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                 errors = np.rad2deg(errors)
             else:
                 errors = np.rad2deg(errors)
+        
+        # Flatten errors for percentile calculation
+        all_errors = errors.flatten()
         
         n_sources = errors.shape[1]
         
@@ -314,6 +321,8 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
             # Calculate errors
             if metric_type == 'absolute':
                 errors = np.abs(alg_estimates - current_true_angles)
+                # Flatten errors for percentile calculation
+                all_errors.extend(errors.flatten())
                 # Handle each source individually
                 n_sources = errors.shape[1]
                 for j in range(n_sources):
@@ -336,6 +345,9 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                 if metric_unit == 'deg':
                     sample_errors = np.rad2deg(sample_errors)
                 
+                # Add to all_errors for percentile calculation
+                all_errors.extend(sample_errors)
+                
                 # Sort errors
                 sorted_errors = np.sort(sample_errors)
                 # Calculate CDF values
@@ -349,6 +361,25 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                 raise ValueError(f"Unknown metric_type: {metric_type}")
     else:
         raise ValueError(f"estimates must be either np.ndarray or dict, got {type(estimates)}")
+    
+    # Plot 90% percentile line if requested
+    if show_90_percentile and all_errors:
+        # Calculate 90% percentile
+        percentile_90 = np.percentile(all_errors, 90)
+        
+        # Get y-axis limits to draw horizontal line
+        y_min, y_max = ax.get_ylim()
+        
+        # Draw horizontal line at 90% CDF
+        ax.axhline(y=0.9, color='black', linestyle='--', linewidth=1, alpha=0.7, label='90% CDF')
+        
+        # Draw vertical line at 90% percentile error
+        ax.axvline(x=percentile_90, color='black', linestyle='--', linewidth=1, alpha=0.7)
+        
+        # Add text annotation
+        ax.text(percentile_90, y_max * 0.95, f'90%: {percentile_90:.3f} {metric_unit}', 
+                horizontalalignment='center', verticalalignment='top', 
+                bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=2))
     
     ax.set_xlabel(f'{metric_name} ({metric_unit})')
     ax.set_ylabel('CDF')
