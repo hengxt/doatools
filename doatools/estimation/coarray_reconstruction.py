@@ -79,7 +79,7 @@ class CovarianceReconstructionBase(ABC):
         self._doa_estimator = doa_estimator
 
     @abstractmethod
-    def reconstruct(self, R):
+    def reconstruct(self, R, **kwargs):
         """Reconstructs the augmented covariance matrix.
         
         Args:
@@ -89,6 +89,33 @@ class CovarianceReconstructionBase(ABC):
             ~numpy.ndarray: Augmented covariance matrix.
         """
         pass
+
+    def _doa_estimate(self, Ra, k, **kwargs):
+        search_grid = kwargs.get('search_grid', None)
+        unit = kwargs.get('unit', 'rad')
+        # Use the virtual ULA for DOA estimation,  Default to RootMUSIC1D
+        if self._doa_estimator is None:
+            doa_estimator = RootMUSIC1D(self._wavelength)
+            resolved, estimates = doa_estimator.estimate(Ra, k, d0=self._virtual_ula.d0, unit=unit)
+            if 'return_spectrum' in kwargs and kwargs['return_spectrum']:
+                if search_grid is None:
+                    return resolved, estimates, None
+                music = MUSIC(self._virtual_ula, self._wavelength, search_grid)
+                _, _, spectrum = music.estimate(Ra, k, return_spectrum=True)
+                return resolved, estimates, spectrum
+            else:
+                return resolved, estimates
+        elif isinstance(self._doa_estimator, RootMUSIC1D):
+            resolved, estimates = self._doa_estimator.estimate(Ra, k, d0=self._virtual_ula.d0, unit=unit)
+            return resolved, estimates
+        else:
+            if hasattr(self._doa_estimator, '_search_grid') and search_grid is None:
+                if 'return_spectrum' in kwargs and kwargs['return_spectrum']:
+                    return False, None, None
+                else:
+                    return False, None
+            return self._doa_estimator.estimate(Ra, k, **kwargs)
+
 
     def estimate(self, R, k, **kwargs):
         r"""Estimates the source locations from the given covariance matrix.
@@ -119,8 +146,6 @@ class CovarianceReconstructionBase(ABC):
               at the grid points. Only present if ``return_spectrum`` is
               ``True`` and a search grid is provided.
         """
-        search_grid = kwargs.get('search_grid', None)
-        unit = kwargs.get('unit', 'rad')
         ensure_covariance_size(R, self._array)
         Ra = self.reconstruct(R)
         if Ra is None:
@@ -128,29 +153,7 @@ class CovarianceReconstructionBase(ABC):
                 return False, None, None
             else:
                 return False, None
-
-        # Use the virtual ULA for DOA estimation,  Default to RootMUSIC1D
-        if self._doa_estimator is None:
-            doa_estimator = RootMUSIC1D(self._wavelength)
-            resolved, estimates = doa_estimator.estimate(Ra, k, d0=self._virtual_ula.d0, unit=unit)
-            if 'return_spectrum' in kwargs and kwargs['return_spectrum']:
-                if search_grid is None:
-                    return resolved, estimates, None
-                music = MUSIC(self._virtual_ula, self._wavelength, search_grid)
-                _, _, spectrum = music.estimate(Ra, k, return_spectrum=True)
-                return resolved, estimates, spectrum
-            else:
-                return resolved, estimates
-        elif isinstance(self._doa_estimator, RootMUSIC1D):
-            resolved, estimates = self._doa_estimator.estimate(Ra, k, d0=self._virtual_ula.d0, unit=unit)
-            return resolved, estimates
-        else:
-            if hasattr(self._doa_estimator, '_search_grid') and search_grid is None:
-                if 'return_spectrum' in kwargs and kwargs['return_spectrum']:
-                    return False, None, None
-                else:
-                    return False, None
-            return self._doa_estimator.estimate(Ra, k, **kwargs)
+        return self._doa_estimate(Ra, k, **kwargs)
 
 
 class SPAEstimator(CovarianceReconstructionBase):
@@ -285,7 +288,6 @@ class ANMEstimator(CovarianceReconstructionBase):
         error = cp.multiply(self._M, T) - self._S.T @ R @ self._S.conj()
         objective = cp.Minimize(cp.norm(error, 'fro') ** 2 + self._zeta * cp.real(cp.trace(T)))
         constraints.append(T >> 0)
-
 
         prob = cp.Problem(objective, constraints)
         prob.solve(solver=self._solver, verbose=False)
