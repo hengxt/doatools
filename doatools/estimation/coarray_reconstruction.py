@@ -156,6 +156,46 @@ class CovarianceReconstructionBase(ABC):
         return self._doa_estimate(Ra, k, **kwargs)
 
 
+class DAEstimator(CovarianceReconstructionBase):
+    """Creates a source location estimator based on Spatial-smoothing based 
+    Augmentation (SPA) algorithm.
+    
+    The SPA algorithm reconstructs a large covariance matrix corresponding to 
+    the difference coarray uniform linear array using semi-definite programming 
+    (SDP) approach, and then applies subspace-based methods (such as MUSIC) 
+    for DOA estimation.
+    
+    Args:
+        array (~doatools.model.arrays.ArrayDesign): Array design.
+        wavelength (float): Wavelength of the carrier wave.
+        search_grid (~doatools.estimation.grid.SearchGrid, optional): The search grid 
+            used to locate the sources. Defaults to None. Not needed for 
+            gridless DOA estimators like RootMUSIC1D and ESPRIT.
+        method (str, optional): 'DA' or 'SS'. Defaults to 'da'.
+        doa_estimator: DOA estimator instance. Defaults to None (RootMUSIC1D).
+        **kwargs: Other keyword arguments.
+            
+    References:
+        [1] Y.I. Abramovich, D.A. Gray, A.Y. Gorokhov, and N.K. Spencer, “Positive-definite toeplitz completion in DOA estimation for nonuniform linear antenna arrays. i. fully augmentable arrays,” IEEE Trans. Signal Process., vol. 46, no. 9, pp. 24582471, 1998.
+    """
+
+    def __init__(self, array, wavelength, method: str='da', doa_estimator=None, search_grid=None, **kwargs):
+        super().__init__(array, wavelength, doa_estimator, search_grid, **kwargs)
+        self._method = 'da'
+
+    def reconstruct(self, R):
+        """Reconstructs the augmented covariance matrix using Direct Augenment algorithm.
+
+        Args:
+            R (~numpy.ndarray): Sample covariance matrix of the sparse array.
+
+        Returns:
+            ~numpy.ndarray: Augmented covariance matrix.
+        """
+        scm_vector = self._coarray_builder.transform(R, self._method)
+        return scm_vector
+
+
 class SPAEstimator(CovarianceReconstructionBase):
     """Creates a source location estimator based on Spatial-smoothing based 
     Augmentation (SPA) algorithm.

@@ -263,8 +263,8 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
     else:
         true_angles_repeated = true_angles
     
-    # Calculate all errors first to determine 90% percentile
-    all_errors = []
+    # Store error data for each algorithm/source for later 90% percentile calculation
+    algorithm_errors = []
     
     # Handle single algorithm case
     if isinstance(estimates, np.ndarray):
@@ -290,9 +290,6 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
             else:
                 errors = np.rad2deg(errors)
         
-        # Flatten errors for percentile calculation
-        all_errors = errors.flatten()
-        
         n_sources = errors.shape[1]
         
         # Plot CDF for each source
@@ -308,6 +305,12 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
             # Plot CDF
             ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
                     label=f'{algorithm_name} - Source {i+1}')
+            # Store error data for this algorithm/source
+            algorithm_errors.append({
+                'name': f'{algorithm_name} - Source {i+1}',
+                'errors': sorted_errors,
+                'color': color
+            })
     # Handle multi-algorithm comparison case
     elif isinstance(estimates, dict):
         # Iterate through each algorithm
@@ -321,8 +324,6 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
             # Calculate errors
             if metric_type == 'absolute':
                 errors = np.abs(alg_estimates - current_true_angles)
-                # Flatten errors for percentile calculation
-                all_errors.extend(errors.flatten())
                 # Handle each source individually
                 n_sources = errors.shape[1]
                 for j in range(n_sources):
@@ -332,6 +333,12 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                     color, _ = get_doa_method_style(alg_name, j)
                     ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
                             label=f'{alg_name} - Source {j+1}')
+                    # Store error data for this algorithm/source
+                    algorithm_errors.append({
+                        'name': f'{alg_name} - Source {j+1}',
+                        'errors': sorted_errors,
+                        'color': color
+                    })
             elif metric_type in ['rms', 'mae']:
                 # Calculate overall metric for each Monte Carlo sample
                 if metric_type == 'rms':
@@ -345,9 +352,6 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                 if metric_unit == 'deg':
                     sample_errors = np.rad2deg(sample_errors)
                 
-                # Add to all_errors for percentile calculation
-                all_errors.extend(sample_errors)
-                
                 # Sort errors
                 sorted_errors = np.sort(sample_errors)
                 # Calculate CDF values
@@ -357,29 +361,39 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                 # Plot CDF
                 ax.plot(sorted_errors, cdf, '-', color=color, linewidth=2, 
                         label=alg_name)
+                # Store error data for this algorithm
+                algorithm_errors.append({
+                    'name': alg_name,
+                    'errors': sorted_errors,
+                    'color': color
+                })
             else:
                 raise ValueError(f"Unknown metric_type: {metric_type}")
     else:
         raise ValueError(f"estimates must be either np.ndarray or dict, got {type(estimates)}")
     
     # Plot 90% percentile line if requested
-    if show_90_percentile and all_errors:
-        # Calculate 90% percentile
-        percentile_90 = np.percentile(all_errors, 90)
-        
+    if show_90_percentile and algorithm_errors:
         # Get y-axis limits to draw horizontal line
         y_min, y_max = ax.get_ylim()
         
         # Draw horizontal line at 90% CDF
         ax.axhline(y=0.9, color='black', linestyle='--', linewidth=1, alpha=0.7, label='90% CDF')
         
-        # Draw vertical line at 90% percentile error
-        ax.axvline(x=percentile_90, color='black', linestyle='--', linewidth=1, alpha=0.7)
-        
-        # Add text annotation
-        ax.text(percentile_90, y_max * 0.95, f'90%: {percentile_90:.3f} {metric_unit}', 
-                horizontalalignment='center', verticalalignment='top', 
-                bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=2))
+        # Calculate and plot 90% percentile for each algorithm/source
+        for alg_data in algorithm_errors:
+            # Calculate 90% percentile for this algorithm/source
+            p90_error = np.percentile(alg_data['errors'], 90)
+            
+            # Draw vertical line from 90% CDF line to the algorithm's CDF curve
+            ax.axvline(x=p90_error, color=alg_data['color'], linestyle='--', linewidth=1, alpha=0.5)
+            
+            # Add text annotation with the algorithm name and 90% error value
+            ax.text(p90_error, 0.9, f'{alg_data["name"]}: {p90_error:.3f}', 
+                    horizontalalignment='center', verticalalignment='bottom', 
+                    color=alg_data['color'], 
+                    bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=2),
+                    rotation=90)  # Rotate text to save space
     
     ax.set_xlabel(f'{metric_name} ({metric_unit})')
     ax.set_ylabel('CDF')
