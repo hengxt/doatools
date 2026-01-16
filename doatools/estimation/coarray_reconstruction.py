@@ -235,18 +235,17 @@ class SPAEstimator(CovarianceReconstructionBase):
             ~numpy.ndarray: Augmented covariance matrix.
         """
         ensure_covariance_size(R, self._array)
+        S_const = cp.Constant(self._S)
+
         n, m = self._S.shape
         R_hat = (R + R.T.conj()) / 2
         R_hat_inv = inv(R_hat)
-        # R_sqrt = sqrtm(R_hat)
         R_sqrt = cp.Constant(sqrtm(R_hat))
-        R_hat_inv = (R_hat_inv + R_hat_inv.T.conj()) / 2
+        R_hat_inv = cp.Constant((R_hat_inv + R_hat_inv.T.conj()) / 2)
         R_sqrt = (R_sqrt + R_sqrt.T.conj()) / 2
         T = cp.Variable((m, m), hermitian=True)
         X = cp.Variable((n, n), hermitian=True)
-        objective = cp.Minimize(cp.real(cp.trace(X) + cp.trace(R_hat_inv @ self._S @ T @ self._S.T.conj())))
-        # Z = np.zeros((n, m), dtype=complex)
-        # I_n = np.eye(n)
+        objective = cp.Minimize(cp.real(cp.trace(X) + cp.trace(R_hat_inv @ S_const @ T @ S_const.T.conj())))
         Z = cp.Constant(np.zeros((n, m), dtype=complex))
         I_n = cp.Constant(np.eye(n))
 
@@ -254,13 +253,13 @@ class SPAEstimator(CovarianceReconstructionBase):
         if self._lambda_noise > 0:
             lmi_matrix = cp.bmat([
                 [X, R_sqrt, Z],
-                [R_sqrt.T.conj(), self._S @ T @ self._S.T.conj() + self._lambda_noise * I_n, Z],
+                [R_sqrt.T.conj(), S_const @ T @ S_const.T.conj() + self._lambda_noise * I_n, Z],
                 [Z.T.conj(), Z.T.conj(), T]
             ])
         else:
             lmi_matrix = cp.bmat([
                 [X, R_sqrt, Z],
-                [R_sqrt.T.conj(), self._S @ T @ self._S.T.conj(), Z],
+                [R_sqrt.T.conj(), S_const @ T @ S_const.T.conj(), Z],
                 [Z.T.conj(), Z.T.conj(), T]
             ])
         constraints = [lmi_matrix >> 0]
@@ -318,6 +317,10 @@ class ANMEstimator(CovarianceReconstructionBase):
             ~numpy.ndarray: Augmented covariance matrix.
         """
         ensure_covariance_size(R, self._array)
+        M_const = cp.Constant(self._M)
+        S_const = cp.Constant(self._S)
+        R_const = cp.Constant(R)
+
         n, m = self._S.shape
         W = cp.Variable((m,), complex=True)
         T = cp.Variable((m, m), hermitian=True)
@@ -330,7 +333,7 @@ class ANMEstimator(CovarianceReconstructionBase):
                     if i != j:
                         constraints.append(T[j, i] == cp.conj(W[k]))
 
-        error = cp.multiply(self._M, T) - self._S.T @ R @ self._S.conj()
+        error = cp.multiply(M_const, T) - S_const.T @ R_const @ S_const.conj()
         objective = cp.Minimize(cp.norm(error, 'fro') ** 2 + self._zeta * cp.real(cp.trace(T)))
         constraints.append(T >> 0)
 
@@ -385,13 +388,15 @@ class StructCovMLEEstimator(CovarianceReconstructionBase):
         ensure_covariance_size(R, self._array)
         n, m = self._S.shape
         V = np.eye(m, dtype=np.complex128)
+        R_const = cp.Constant(R)
+        S_const = cp.Constant(self._S)
         for iter_count in range(self._max_iter):
             V_prev = V.copy()
             Vs = self._S @ V @ self._S.conj().T
             if self._lambda_noise is not None:
                 Vs += self._lambda_noise * np.eye(n)
             Vs_inv = inv(Vs)
-            Vs_inv = (Vs_inv + Vs_inv.conj().T) / 2
+            Vs_inv = cp.Constant((Vs_inv + Vs_inv.conj().T) / 2)
             T = cp.Variable((m, m), hermitian=True)
             X = cp.Variable((n, n), hermitian=True)
             toeplitz_constraints = []
@@ -402,12 +407,12 @@ class StructCovMLEEstimator(CovarianceReconstructionBase):
             Z   = cp.Constant(np.zeros((n, m), dtype=np.complex128))
             lmi_matrix = cp.bmat([
                 [X, I_n, Z],
-                [I_n, self._S @ T @ self._S.conj().T, Z],
+                [I_n, S_const @ T @ S_const.conj().T, Z],
                 [Z.conj().T, Z.conj().T, T]
             ])
             objective = cp.Minimize(
-                cp.real(cp.trace(Vs_inv @ self._S @ T @ self._S.conj().T)) +
-                cp.real(cp.trace(X @ R))
+                cp.real(cp.trace(Vs_inv @ S_const @ T @ S_const.conj().T)) +
+                cp.real(cp.trace(X @ R_const))
             )
             constraints = [lmi_matrix >> 0] + toeplitz_constraints
             problem = cp.Problem(objective, constraints)
