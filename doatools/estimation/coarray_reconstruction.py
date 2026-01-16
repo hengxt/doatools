@@ -238,14 +238,19 @@ class SPAEstimator(CovarianceReconstructionBase):
         n, m = self._S.shape
         R_hat = (R + R.T.conj()) / 2
         R_hat_inv = inv(R_hat)
-        R_sqrt = sqrtm(R_hat)
+        # R_sqrt = sqrtm(R_hat)
+        R_sqrt = cp.Constant(sqrtm(R_hat))
         R_hat_inv = (R_hat_inv + R_hat_inv.T.conj()) / 2
         R_sqrt = (R_sqrt + R_sqrt.T.conj()) / 2
         T = cp.Variable((m, m), hermitian=True)
         X = cp.Variable((n, n), hermitian=True)
         objective = cp.Minimize(cp.real(cp.trace(X) + cp.trace(R_hat_inv @ self._S @ T @ self._S.T.conj())))
-        Z = np.zeros((n, m), dtype=complex)
-        I_n = np.eye(n)
+        # Z = np.zeros((n, m), dtype=complex)
+        # I_n = np.eye(n)
+        Z = cp.Constant(np.zeros((n, m), dtype=complex))
+        I_n = cp.Constant(np.eye(n))
+
+
         if self._lambda_noise > 0:
             lmi_matrix = cp.bmat([
                 [X, R_sqrt, Z],
@@ -393,8 +398,8 @@ class StructCovMLEEstimator(CovarianceReconstructionBase):
             for i in range(1, m):
                 for j in range(1, m):
                     toeplitz_constraints.append(T[i, j] == T[i - 1, j - 1])
-            Z = np.zeros((n, m), dtype=np.complex128)
-            I_n = np.eye(n)
+            I_n = cp.Constant(np.eye(n))
+            Z   = cp.Constant(np.zeros((n, m), dtype=np.complex128))
             lmi_matrix = cp.bmat([
                 [X, I_n, Z],
                 [I_n, self._S @ T @ self._S.conj().T, Z],
@@ -470,6 +475,7 @@ class WassersteinEstimator(CovarianceReconstructionBase):
             ~numpy.ndarray: Augmented covariance matrix.
         """
         ensure_covariance_size(R, self._array)
+
         n, m = self._S.shape
 
         if self._use_gradient:
@@ -544,19 +550,21 @@ class WassersteinEstimator(CovarianceReconstructionBase):
             R0 = toeplitz_from_params(c)
             return (R0 + R0.conj().T) / 2
         else:
+            S_const  = cp.Constant(self._S)
             R_hat = (R + R.conj().T) / 2
+            R_const  = cp.Constant(R_hat)
             R0 = cp.Variable((m, m), hermitian=True)
             V = cp.Variable((n, n), complex=True)
 
-            objective = cp.Minimize(cp.real(cp.trace(R_hat + self._S @ R0 @ self._S.conj().T - V - V.conj().T)))
+            objective = cp.Minimize(cp.real(cp.trace(R_const + S_const @ R0 @ S_const.conj().T - V - V.conj().T)))
             constraints = []
             for i in range(m):
                 for j in range(m):
                     if i > 0 and j > 0:
                         constraints.append(R0[i, j] == R0[i - 1, j - 1])
             lmi_matrix = cp.bmat([
-                [self._S @ R0 @ self._S.conj().T, V],
-                [V.conj().T, R_hat]
+                [S_const @ R0 @ S_const.conj().T, V],
+                [V.conj().T, R_const]
             ])
             constraints.append(lmi_matrix >> 0)
             constraints.append(R0 >> 0)
