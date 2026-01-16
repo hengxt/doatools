@@ -316,19 +316,24 @@ class DOAPerformanceEvaluator:
             all_run_times = []
 
             if n_processes > 1:
-                # Use parallel processing
                 with multiprocessing.Pool(processes=n_processes) as pool:
-                    # Create a list of arguments for each run
-                    args_list = [(estimator, self.array, self.sources, self.n_snapshots,
-                                  self.power_source, self.power_noise, i) for i in range(self.n_monte_carlo)]
-                    # Execute in parallel
-                    results = pool.starmap(_single_monte_carlo_run, args_list)
-                    # Collect valid results and run times
+                    results = []
+                    def callback(result):
+                        results.append(result)
+                        tbar.update(1)
+                    for i in range(self.n_monte_carlo):
+                        pool.apply_async(
+                            _single_monte_carlo_run,
+                            args=(estimator, self.array, self.sources, self.n_snapshots,
+                                  self.power_source, self.power_noise, i),
+                            callback=callback
+                        )
+                    pool.close()
+                    pool.join()
                     for res, run_time in results:
                         all_run_times.append(run_time)
                         if res is not None:
                             all_estimates.append(res)
-                        tbar.update(1)
             else:
                 for _ in range(self.n_monte_carlo):
                     res, run_time = _single_monte_carlo_run(estimator, self.array, self.sources, self.n_snapshots,
