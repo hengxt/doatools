@@ -78,17 +78,18 @@ class CovarianceReconstructionBase(ABC):
         """
         self._doa_estimator = doa_estimator
 
-    @abstractmethod
-    def reconstruct(self, R, **kwargs):
+    # @abstractmethod
+    def reconstruct(self, R, Y=None, **kwargs):
         """Reconstructs the augmented covariance matrix.
         
         Args:
             R (~numpy.ndarray): Sample covariance matrix of the sparse array.
+            Y (~numpy.ndarray): Sample signal of the sparse array.
             
         Returns:
             ~numpy.ndarray: Augmented covariance matrix.
         """
-        pass
+        return R
 
     def _doa_estimate(self, Ra, k, **kwargs):
         search_grid = kwargs.get('search_grid', None)
@@ -117,7 +118,7 @@ class CovarianceReconstructionBase(ABC):
             return self._doa_estimator.estimate(Ra, k, **kwargs)
 
 
-    def estimate(self, R, k, **kwargs):
+    def estimate(self, R, k, Y=None, **kwargs):
         r"""Estimates the source locations from the given covariance matrix.
 
         Args:
@@ -147,7 +148,7 @@ class CovarianceReconstructionBase(ABC):
               ``True`` and a search grid is provided.
         """
         ensure_covariance_size(R, self._array)
-        Ra = self.reconstruct(R)
+        Ra = self.reconstruct(R, Y=Y, **kwargs)
         if Ra is None:
             if 'return_spectrum' in kwargs and kwargs['return_spectrum']:
                 return False, None, None
@@ -183,7 +184,7 @@ class DAEstimator(CovarianceReconstructionBase):
         super().__init__(array, wavelength, doa_estimator, search_grid, **kwargs)
         self._method = 'da'
 
-    def reconstruct(self, R):
+    def reconstruct(self, R, Y=None, **kwargs):
         """Reconstructs the augmented covariance matrix using Direct Augenment algorithm.
 
         Args:
@@ -225,7 +226,7 @@ class SPAEstimator(CovarianceReconstructionBase):
         super().__init__(array, wavelength, doa_estimator, search_grid, **kwargs)
         self._lambda_noise = lambda_noise
 
-    def reconstruct(self, R):
+    def reconstruct(self, R, Y=None, **kwargs):
         """Reconstructs the augmented covariance matrix using SPA algorithm.
         
         Args:
@@ -307,7 +308,7 @@ class ANMEstimator(CovarianceReconstructionBase):
         super().__init__(array, wavelength, doa_estimator, search_grid, **kwargs)
         self._zeta = zeta
 
-    def reconstruct(self, R):
+    def reconstruct(self, R, Y=None, **kwargs):
         """Reconstructs the augmented covariance matrix using ANM algorithm.
         
         Args:
@@ -376,7 +377,7 @@ class StructCovMLEEstimator(CovarianceReconstructionBase):
         self._max_iter = max_iter
         self._lambda_noise = lambda_noise
 
-    def reconstruct(self, R):
+    def reconstruct(self, R, Y=None, **kwargs):
         """Reconstructs the augmented covariance matrix using StructCovMLE algorithm.
         
         Args:
@@ -470,7 +471,7 @@ class WassersteinEstimator(CovarianceReconstructionBase):
         self._tol = tol
         self._verbose = verbose
 
-    def reconstruct(self, R):
+    def reconstruct(self, R, Y=None, **kwargs):
         """Reconstructs the augmented covariance matrix using Wasserstein algorithm.
         
         Args:

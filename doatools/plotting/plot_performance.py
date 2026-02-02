@@ -126,7 +126,12 @@ def plot_metric_vs_parameter(parameter_values: np.ndarray, results: Dict[str, np
     
     # Plot CRB curve if needed
     if show_crb and crb_values is not None:
-        ax.semilogy(parameter_values, crb_values, '--k', linewidth=2, label=crb_label)
+        if isinstance(crb_values, dict):
+            for i, (key, value) in enumerate(crb_values.items()):
+                color, _ = get_doa_method_style(key, i)
+                ax.semilogy(parameter_values, value, '--', color=color, linewidth=2, label=f'{crb_label} ({key})')
+        else:
+            ax.semilogy(parameter_values, crb_values, '--k', linewidth=2, label=crb_label)
     
     # Plot each algorithm's curve, using colors and markers corresponding to DOA methods
     for i, (algorithm, metric_values) in enumerate(results.items()):

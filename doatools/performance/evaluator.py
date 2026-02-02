@@ -116,8 +116,11 @@ def _single_monte_carlo_run(estimator, array, sources, n_snapshots, power_source
     # execute DOA estimation
     sig = inspect.signature(estimator.estimate)
     params = list(sig.parameters.keys())
-    if len(params) >= 4 or 'd0' in params:
-        resolved, estimates = estimator.estimate(Ry, sources.size, array.d0[0])
+    if len(params) >= 4:
+        if 'd0' in params:
+            resolved, estimates = estimator.estimate(Ry, sources.size, array.d0[0])
+        if 'Y' in params:
+            resolved, estimates = estimator.estimate(Ry, sources.size, Y=y)
     else:
         resolved, estimates = estimator.estimate(Ry, sources.size)
     run_time = time.time() - run_start_time
