@@ -140,7 +140,7 @@ class DOAPerformanceEvaluator:
     """
 
     def __init__(self, array, sources, snr, n_snapshots, n_monte_carlo,
-                 estimators, crb_types=None, metrics=None, save_sample_estimates=False, n_jobs=1):
+                 estimators, crb_types=None, metrics=None, save_sample_estimates=False, n_jobs=1, **kwargs):
         """Initializes the performance evaluator.
         
         Args:
@@ -185,6 +185,7 @@ class DOAPerformanceEvaluator:
         self.metrics = metrics
         self._validate_inputs()
         self.save_sample_estimates = save_sample_estimates
+        self.power_source = kwargs.get('power_source', 1.0)
         self._precompute_parameters()
 
     @staticmethod
@@ -240,7 +241,6 @@ class DOAPerformanceEvaluator:
 
     def _precompute_parameters(self):
         """Precomputes some parameters."""
-        self.power_source = 1.0
         self.power_noise = self.power_source / (10 ** (self.snr / 10))
         self.source_signal = ComplexStochasticSignal(self.sources.size, self.power_source)
         self.noise_signal = ComplexStochasticSignal(self.array.size, self.power_noise)
@@ -404,7 +404,7 @@ class DOAPerformanceEvaluator:
 
 def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
                          estimators, crb_types=None, metrics=None, custom_metrics=None,
-                         save_sample_estimates=False, verbose=0, n_jobs=1):
+                         save_sample_estimates=False, verbose=0, n_jobs=1, power_source=1.0):
     """Performance evaluation function for quickly assessing DOA algorithm performance.
     
     This function is a simplified interface for the DOAPerformanceEvaluator class,
@@ -434,6 +434,9 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
     Returns:
         PerformanceResult: Evaluation result object.
     """
+    kwargs = {
+        'power_source': power_source
+    }
     evaluator = DOAPerformanceEvaluator(
         array=array,
         sources=sources,
@@ -444,6 +447,7 @@ def evaluate_performance(array, sources, snr, n_snapshots, n_monte_carlo,
         crb_types=crb_types,
         metrics=metrics,
         save_sample_estimates=save_sample_estimates,
-        n_jobs=n_jobs
+        n_jobs=n_jobs,
+        **kwargs
     )
     return evaluator.evaluate(custom_metrics, verbose=verbose)

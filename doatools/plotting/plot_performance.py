@@ -285,6 +285,9 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
         elif metric_type == 'mae':
             errors = np.mean(np.abs(estimates - true_angles_repeated), axis=1)
             errors = errors[:, np.newaxis]  # Convert to (n_monte_carlo, 1)
+        elif metric_type == 'mse':
+            errors = np.mean(np.square(estimates - true_angles_repeated), axis=1)
+            errors = errors[:, np.newaxis]  # Convert to (n_monte_carlo, 1)
         else:
             raise ValueError(f"Unknown metric_type: {metric_type}")
         
@@ -344,14 +347,17 @@ def plot_cdf(estimates: Union[np.ndarray, Dict[str, np.ndarray]], true_angles: n
                         'errors': sorted_errors,
                         'color': color
                     })
-            elif metric_type in ['rms', 'mae']:
+            elif metric_type in ['rms', 'mae', 'mse']:
                 # Calculate overall metric for each Monte Carlo sample
                 if metric_type == 'rms':
                     # RMS for each sample (root mean square of all sources)
                     sample_errors = np.sqrt(np.mean(np.square(alg_estimates - current_true_angles), axis=1))
-                else:  # mae
+                elif metric_type == 'mae':  # mae
                     # MAE for each sample (mean absolute error of all sources)
                     sample_errors = np.mean(np.abs(alg_estimates - current_true_angles), axis=1)
+                elif metric_type == 'mse':  # mse
+                    # MSE for each sample (mean squared error of all sources)
+                    sample_errors = np.mean(np.square(alg_estimates - current_true_angles), axis=1)
                 
                 # Convert to degrees if needed
                 if metric_unit == 'deg':
