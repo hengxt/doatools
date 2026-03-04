@@ -584,3 +584,143 @@ class WassersteinEstimator(CovarianceReconstructionBase):
                 result = toeplitz(result[:, 0])
                 result = (result + result.conj().T) / 2
                 return result
+
+from scipy.optimize import least_squares
+from scipy.signal import find_peaks
+
+class NewtonianIdentitiesBeamformingEstimator(CovarianceReconstructionBase):
+    """基于牛顿恒等式 + 确定性粗波束形成，联合估计信号功率 σ_s² 和初值 e"""
+
+    def __init__(self, array, wavelength, sigma_s2: float = 1.0,
+                 doa_estimator=None, search_grid=None,
+                 beamforming_grid_size=1800, **kwargs):
+        super().__init__(array, wavelength, doa_estimator, search_grid, **kwargs)
+        self._sigma_s2 = sigma_s2          # 仅作为 fallback，实际会被估计覆盖
+        self._bf_grid_size = beamforming_grid_size
+        self._d_lambda = 0.5
+        self.estimated_sigma_s2 = None     # 新增：运行后可访问真实估计值
+
+    @staticmethod
+    def _compute_elementary_symmetric_polynomials(p: np.ndarray, k: int) -> np.ndarray:
+        e = np.zeros(k + 1, dtype=complex)
+        e[0] = 1
+        for n in range(1, k + 1):
+            sum_term = 0
+            for j in range(1, n + 1):
+                if j - 1 < len(p):
+                    sum_term += (-1) ** (j - 1) * e[n - j] * p[j - 1]
+            e[n] = sum_term / n
+        return e[1:]
+
+    @staticmethod
+    def _compute_power_sums_from_e(e: np.ndarray, k: int, m: int) -> np.ndarray:
+        p_array = np.zeros(m, dtype=complex)
+        for n in range(1, m + 1):
+            if n <= k:
+                p_n = (-1) ** (n - 1) * n * e[n - 1]
+                for j in range(1, n):
+                    p_n += (-1) ** (j - 1) * e[j - 1] * p_array[n - j - 1]
+            else:
+                p_n = 0
+                for j in range(1, k + 1):
+                    p_n += (-1) ** (j - 1) * e[j - 1] * p_array[n - j - 1]
+            p_array[n - 1] = p_n
+        return p_array
+
+    def _angles_to_e(self, angles, k):
+        zs = np.exp(1j * 2 * np.pi * self._d_lambda * np.sin(angles))
+        coeffs = np.poly(zs)
+        e_vec = np.zeros(k, dtype=complex)
+        for n in range(1, k + 1):
+            e_vec[n-1] = coeffs[n] * ((-1)**n)
+        return e_vec
+
+    def _get_initial_guess(self, k, known_p, known_indices):
+        """波束形成 + 线性LS，同时给出 e_init 和 sigma_init（关键改进）"""
+        grid = np.linspace(-np.pi/2, np.pi/2, self._bf_grid_size)
+        mu = 2 * np.pi * self._d_lambda * np.sin(grid)
+        exponents = np.exp(-1j * np.outer(known_indices, mu))
+        spectrum = np.real(known_p @ exponents)
+
+        # 改进寻峰：避免相邻重复峰
+        peaks, _ = find_peaks(spectrum, distance=max(3, len(grid)//100))
+        if len(peaks) >= k:
+            top_idx = np.argsort(spectrum[peaks])[-k:]
+            selected_angles = grid[peaks[top_idx]]
+        else:
+            selected_angles = grid[np.argsort(spectrum)[-k:]]
+
+        e_init = self._angles_to_e(selected_angles, k)
+
+        # 用初始 e 做线性LS求 sigma_init（极快且准）
+        max_known = int(np.max(known_indices))
+        p_init = self._compute_power_sums_from_e(e_init, k, max_known)
+        p_known_init = p_init[known_indices - 1]
+        denom = np.sum(np.abs(p_known_init)**2)
+        if denom > 1e-12:
+            num = np.dot(known_p, np.conj(p_known_init))
+            sigma_init = max(np.real(num / denom), 1e-6)
+        else:
+            sigma_init = 1.0
+        return e_init, sigma_init
+
+    def _compute_missing_R(self, k: int, m: int, known_p: np.ndarray, known_indices: np.ndarray):
+        """联合优化 e 和 σ_s²，返回 (补全的R, estimated_sigma)"""
+        max_known = int(np.max(known_indices))
+
+        # 1. 优质初值（波束形成 + 线性LS）
+        e_init, sigma_init = self._get_initial_guess(k, known_p, known_indices)
+
+        # 2. 优化变量： [Re(e), Im(e), sigma]
+        x0 = np.zeros(2 * k + 1)
+        x0[:k] = np.real(e_init)
+        x0[k:2*k] = np.imag(e_init)
+        x0[-1] = sigma_init
+
+        def residual_function(x):
+            e = x[:k] + 1j * x[k:2*k]
+            sigma = max(x[-1], 1e-8)                     # 安全保护
+            p_array = self._compute_power_sums_from_e(e, k, max_known)
+            pred = sigma * p_array[known_indices - 1]
+            diff = pred - known_p
+            return np.concatenate([np.real(diff), np.imag(diff)])
+
+        # 3. 优化（trf 支持 bounds）
+        lb = np.full(2*k + 1, -np.inf)
+        lb[-1] = 1e-8
+        ub = np.full(2*k + 1, np.inf)
+        res = least_squares(residual_function, x0, bounds=(lb, ub),
+                            method='trf', ftol=1e-12, xtol=1e-12,
+                            gtol=1e-12, max_nfev=2000)
+
+        # 4. 提取结果
+        x_opt = res.x
+        e_opt = x_opt[:k] + 1j * x_opt[k:2*k]
+        sigma_est = max(x_opt[-1], 1e-8)
+
+        p_full = self._compute_power_sums_from_e(e_opt, k, m)
+        return sigma_est * p_full, sigma_est
+
+    def reconstruct(self, R, **kwargs):
+        return self._coarray_builder.transform(R, 'da')
+
+    def estimate(self, R, k, **kwargs):
+        _, m = self._S.shape
+        scm_vector = self.reconstruct(R)[:, 0]
+        non_zero_mask = scm_vector[1:] != 0.0
+        known_indices = np.where(non_zero_mask)[0] + 1
+        known_values = scm_vector[known_indices]
+
+        try:
+            all_R_values, sigma_est = self._compute_missing_R(
+                k, m - 1, known_values, known_indices)
+            scm_vector[1:m] = all_R_values
+            self.estimated_sigma_s2 = sigma_est
+        except Exception as e:
+            print(f"niBFAlgorithmFails: {e}")
+            self.estimated_sigma_s2 = self._sigma_s2
+
+        Ra = toeplitz(scm_vector)
+        Ra = (Ra + Ra.conj().T) / 2
+        return self._doa_estimate(Ra, k, **kwargs)
+
